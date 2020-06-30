@@ -1,19 +1,108 @@
 local p = {}
 -- Необходимые модули и переменные
+
 local getArgs = require('Module:Arguments').getArgs
-local yesno = require('Module:Yesno')
-local lang = mw.getContentLanguage()
+
 local err = "―" -- NthDay nil result
 
 -- 00) Блок многократно используемых списков
-local bool_to_number={ [true]=1, [false]=0 }
+--[==[ Таблицы с данными для работы модуля ]==]
+
+local pattern = { -- для распознавания дат, переданных одним строчным параметром
+	{"(-?%d+%d*)-(%d+)-(%d+)",  	["order"] = {3,2,1} },  -- y-m-d
+	{"(%d+)%.(%d+)%.(-?%d+%d*)",	["order"] = {1,2,3} }, 	-- d.m.y
+	{"(%d+)%s(%d+)%s(-?%d+%d*)",	["order"] = {1,2,3} }, 	-- d m y
+	{"(%d+)%s(%a+)%s(-?%d+%d*)", 	["order"] = {1,2,3} }, 	-- d mmm y
+} 
+
+local time_units = {"year","month","day"}
+--[[ local time_units = {"second", "minute", "hour", 
+    "day_of_month", "day_of_week", "day_of_year", 
+    "week", "month", "year", "year_of_century", "century"} ]]--
+-- напоминание чтобы сделать расчёт длительностей периодов
+
+local category_msg = ""
+local category = {
+    ["incomplete_parameters"]=
+    "<!--[[Категория:Модуль:Calendar:Страницы с неполными или некорректными параметрами]]-->",
+    ["without_verification"]=
+    "<!--[[Категория:Модуль:Calendar:Страницы без проверки параметров]]-->",
+    ["erroneous_parameters"]=
+    "<!--[[Категория:Модуль:Calendar:Страницы с ошибочными параметрами]]-->"
+}
+
+-- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
+local errors = {
+    ["start"]="<span class=error>Ошибка: ",
+    ["ending"]=".</span>",
+    ["no_pattern_match"]="строка «%s» не совпадает с заданными паттернами",
+    ["no_valid_date"]="дата «%s·%s·%s» не является корректной",
+    ["wrong_jd"]="юлианская дата %s вне диапазона",
+    ["too_many_arguments"]="ожидается менее %i аргументов",
+    ["too_little_arguments"]="ожидается более %i аргументов",
+    ["wrong_calculation"]="даты %s и %s не прошли проверку, %s дней разница",
+    ["unknown_calendar"]="параметр календаря %s неизвестен",
+    ["unknown_error"]="неизвестная ошибка",
+    ["tech_error"]="ошибка в функции %s",
+--	[""]="",
+}
+
+-- для повышения гибкости вывода можно указать отдельные параметры для первой и второй даты
+-- для повышения удобства пользователя заданные одним параметром аргументы дублируются
+local unik_args = {	"order","lang", "cal", "bc", "sq_brts" }
+local unik_args_bool = {false,false,false,true,true,true}
+-- mode, i/o lang, calendar before christ, square brackets -- brackets inside?
+local dual_args = { "wdm", "wy", "ny", "ym"}
+local dual_args_bool = {true,true,true,false}
+-- wikify day and month, wikify year, no year, year mark
+
+local status = {category="",error={msg="",params=""}}
+local bool2num={[1]=1, [0]=0, ["1"]=1, ["0"]=0, [true]=1, [false]=0, 
+	["__index"]=function(self,v) 
+		return tostring(v)
+	end }
+setmetatable(bool2num,bool2num)
+
+local bool_to_number=bool2num -- XXX mark for deletion XXX
 local monthlang = {"января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"}
 local month_to_num = {["января"]=1,["февраля"]=2,["марта"]=3,["апреля"]=4,["мая"]=5,["июня"]=6,
 	["июля"]=7,["августа"]=8,["сентября"]=9,["октября"]=10,["ноября"]=11,["декабря"]=12,["-"]=""}
 local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
-local params = { {"г", "g"}, {"ю", "j"}}
+local calendars = {{"г", "g"}, {"ю", "j"}}
 local comment = { '<span style="border-bottom: 1px dotted; cursor: help" title="по юлианскому календарю">','</span>'}
-local category = {["params"]="<!--[[Категория:Модуль:calendar:Страницы с некорректными параметрами]]-->"}
+-- local category = {["params"]="<!--[[Категория:Модуль:calendar:Страницы с некорректными параметрами]]-->"}
+
+-- в случае обновления таблицы названий месяцев необходимо также обновлять список кодов языков
+local bc_mark = "до н. э."
+local lang = {"ru", "en", "de", "fr"}
+local month_lang = {
+	["ru"] = {"января","февраля","марта","апреля","мая","июня",
+		"июля","августа","сентября","октября","ноября","декабря"},
+	["en"] = {"january", "february", "march", "april", "may", "june", 
+		"july", "august", "september", "october", "november", "december"},
+	["de"] = {"januar", "februar", "märz", "april", "mai", "juni", 
+		"juli", "august", "september", "oktober", "november", "dezember"},
+	["fr"] = {"janvier", "février", "mars", "avril", "mai", "juin", 
+		"juillet", "août", "septembre", "octobre", "novembre", "décembre"}
+	}
+-- заполняется автоматически
+local reverse_month_lang = {}
+
+-- вспомогательная функция для обращения таблиц (смена ключей со значениями)
+local reverse_table = function (strait_table) 
+	local reversed_table = {}
+	for k,v in pairs(strait_table) do
+		reversed_table[v] = k
+	end
+	return reversed_table
+end
+
+-- запуск цикла по заполнению обратных таблиц, необходимых для распознавания дат
+local filling_months = function (lang, month_lang)
+	for i=1, #lang do
+		reverse_month_lang[lang[i]] = reverse_table(month_lang[lang[i]])
+	end
+end
 
 local known_tzs = {
    ACDT='+10:30', ACST='+09:30', ACT ='+08:00', ADT  ='-03:00', AEDT ='+11:00',
@@ -58,6 +147,49 @@ local tzs_names = {"ACDT","ACST","ACT","ADT","AEDT","AEST","AFT","AKDT","AKST",
 "VLAT","WAT","WEDT","WEST","WET","YAKT","YEKT","Z","A","M","N","Y","MSK"}
 
 -- 10) Блок общих функций
+--[==[ Функции универсального назначения ]==]
+-- вспомогательная функция для проверки вхождения числа в диапазон
+local function number_in_range(value, bottom, top)
+	if type(value) ~= "number" or type(top) ~= "number" or type(bottom) ~= "number" 
+		or top < bottom or value < bottom or value > top then return false
+    else return true end
+end
+
+-- mw.clone копирует с метатаблицами
+-- для определения наибольшего индекса в таблице есть table.maxn
+local function copy_it(original)
+	local c = {}
+	if type(original) == "table" then
+		for key, value in pairs(original) do
+			if value == "" or value == " " then
+				value = nil
+			end
+			c[key] = value
+		end
+	else return original, 1
+	end
+	for i = 7, 1, -1 do
+		if c[i] then 
+			return c, i
+		end
+	end
+	return c, 0
+end 
+
+-- функция, определяющая, содержит ли таблица необходимое число аргументов
+local function is_complete(table_in,start,finish)
+	if type(table_in) ~= "table" or type(start) ~= "number" or type(finish) ~= "number" or start > finish then 
+		return nil
+	else 
+		for i=start,finish do
+			if not table_in[i] then 
+				return false 
+			end
+		end
+	end
+	return true
+end
+
 local function trim(str)
 	if not str then return nil
 	else return str:match'^()%s*$' and '' or str:match'^%s*(.*%S)'
@@ -75,10 +207,11 @@ local function purif(str)
     -- need .5 -- ,5 number format converter?
 end
 
+local yesno = require('Module:Yesno')
 local function is(str)
 	if (not str) or (str == "") then return false
-	else return yesno(str,false)
-	end
+    else return yesno(str,false) 
+    end
 end
 
 local function init(num)
@@ -119,14 +252,26 @@ function shallowcopy(orig)
     return copy
 end
 
-local inlist = function ( var, list )
+-- функция для проверки, содержит ли массив запрашиваемое значение
+local is_in_list = function ( var, list )
+	for i=1, #list do
+		if var == list[i] then
+			return true
+		end
+	end
+    return false
+end
+
+-- XXX mark for deletion XXX
+local inlist = is_in_list --[[ function ( var, list )
     local n = #list
 	local inlist = false
 	for i=1,n do
 		if var == list[i] then inlist = true end
 	end
     return inlist
-end
+end 
+--]]
 
 -- 20) Блок общих проверочных функций, связанных с датами
 
