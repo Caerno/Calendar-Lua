@@ -1,0 +1,61 @@
+== Функции ==
+
+=== NthDay ===
+{{tl|ДатыСтрокой}}, {{tl|Даты}}
+* Получает 4 числовых аргумента, считает дату и выдаёт её в формате пятого, необязательного аргумента. Примеры использования (значения аргументов в скобках):
+** первое (1) воскресенье (0) октября (10) (2020) года =<code><nowiki>{{#invoke:Calendar|NthDay|1|0|10|2020}}</nowiki></code>= {{#invoke:Calendar|NthDay|1|0|10|2020}}
+** вторая (2) среда (3) мая (5) (2019) года =<code><nowiki>{{#invoke:Calendar|NthDay|2|3|5|2019}}</nowiki></code>= {{#invoke:Calendar|NthDay|2|3|5|2019}}
+** последний (-1) понедельник (1) января (1) (2010) года =<code><nowiki>{{#invoke:Calendar|NthDay|-1|1|1|2010}}</nowiki></code>= {{#invoke:Calendar|NthDay|-1|1|1|2010}}
+** предпоследняя (-2) суббота (6) декабря (12) (2001) года =<code><nowiki>{{#invoke:Calendar|NthDay|-2|6|12|2001}}</nowiki></code>= {{#invoke:Calendar|NthDay|-2|6|12|2001}}
+** третье (3) воскресенье (0) марта (3) (2024) года в формате [[ISO 8601]]=<code><nowiki>{{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}</nowiki></code>= {{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}
+
+=== unitime ===
+{{tl|НП/Формат времени}}
+* Оформляет ссылку на UTC, если есть '''любой''' второй параметр — ставит летнее время
+** <code><nowiki>{{#invoke:Calendar|unitime|-0}}</nowiki></code> = {{#invoke:Calendar|unitime|-0}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+0}}</nowiki></code> = {{#invoke:Calendar|unitime|+0}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+2:00}}</nowiki></code> = {{#invoke:Calendar|unitime|+2:00}}
+** <code><nowiki>{{#invoke:Calendar|unitime|−3:30|}}</nowiki></code> = {{#invoke:Calendar|unitime|−3:30|}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+12:45|1}}</nowiki></code> = {{#invoke:Calendar|unitime|+12:45|1}}
+** <code><nowiki>{{#invoke:Calendar|unitime|-3:30|да}}</nowiki></code> = {{#invoke:Calendar|unitime|-3:30|да}}
+** <code><nowiki>{{#invoke:Calendar|unitime|CET}}</nowiki></code> = {{#invoke:Calendar|unitime|CET}}
+** <code><nowiki>{{#invoke:Calendar|unitime|EST|no}}</nowiki></code> = {{#invoke:Calendar|unitime|EST|no}}
+
+=== OldDate ===
+<span style="color:gray">устарело</span>
+* Два обязательных аргумента, первый из которых — дата в формате ДД.ММ.ГГГГ или Д. М.ГГГГ, второй — григорианский/юлианский календарь, «г» или «ю»
+* Необязательные аргументы <code>bc</code> (до нашей эры), а также параметры викификации <code>wd</code>, <code>wm</code> и <code>wy</code>, связанные, соответственно с вифификацией дня, месяца и года
+* Можно использовать параметр <code>sq_brts</code> для использования квадратных скобок и параметр <code>yearmark</code> для нестандартного обозначения года
+** <code><nowiki>{{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}} <span style="color:red">'''ошибка!'''</span>
+** <code><nowiki>{{#invoke:Calendar|OldDate|31.12.1|г|bc=1}}</nowiki></code> = <strong class="error"><span class="scribunto-error" id="mw-scribunto-error-0">Ошибка Lua: bad argument #2 to 'formatDate' (not a valid timestamp).</span></strong>
+** <code><nowiki>{{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}</nowiki></code> = {{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|g|bc=1|yearmark=г.}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|g|bc=1|yearmark=г.}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|g|sq_brts=1|yearmark=0}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|g|sq_brts=1|yearmark=0}}
+
+=== NewDate ===
+{{tl|DateStyle}}
+* Аналогично функции выше, но может обрабатывать отрицательные даты и принимает жёстко только 2 формата d.m.y и y-m-d
+** <code><nowiki>{{#invoke:Calendar|NewDate|1.1.1|ю|wd=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|1.1.1|ю|wd=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|31.12.1|г|bc=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|31.12.1|г|bc=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|{{#time: d.m.Y }}}}</nowiki></code> = {{#invoke:Calendar|NewDate|{{#time: d.m.Y }}}} ''(по умолчанию григорианский)''
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=0|wy=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=0|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=1|wy=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=1|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}
+=== ToIso ===
+* Получает дату в формате ДД.ММ.ГГГГ и выдаёт дату в формате ГГГГ-ММ-ДД
+** 1.2.1602 =<code><nowiki>{{#invoke:Calendar|ToIso|1.2.1602}}</nowiki></code>= {{#invoke:Calendar|ToIso|1.2.1602}}
+
+=== ToDate ===
+* Получает дату в формате [[Википедия:Функции парсера##time]] и возвращает в формате <число> <месяц в родительном падеже> <год>
+* Если в строке нету символов препинания, то возвращает её неизменённой
+** 1.2.1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1.2.1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1.2.1602}}
+** 1/2/1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1/2/1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1/2/1602}}
+** 1602-02-01 =<code><nowiki>{{#invoke:Calendar|ToDate|1602-02-01}}</nowiki></code>= {{#invoke:Calendar|ToDate|1602-02-01}}
+** 1 февраля 1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1 февраля 1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1 февраля 1602}}
+** Завтра (+ 1 day) =<code><nowiki>{{#invoke:Calendar|ToDate|+ 1 day}}</nowiki></code>= {{#invoke:Calendar|ToDate|+ 1 day}}
+
+<includeonly>[[Категория:Модули:Работа с датами]]</includeonly>
+<noinclude>[[Категория:Модули:Документация]]</noinclude>
