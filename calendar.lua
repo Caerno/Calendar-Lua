@@ -273,8 +273,22 @@ local inlist = is_in_list --[[ function ( var, list )
 end 
 --]]
 
+--[==[ Календарные функции ]==]
+-- функция для вычисления последнего дня месяца для юлианского и григорианского календарей
 -- 20) Блок общих проверочных функций, связанных с датами
 
+-- VVV В функцию необходима поправка для формата дат с разрывом в ноле VVV
+local function month_end_day (month,year,is_julian)
+	local mo_end_day = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31} -- если не задан год, дата 29 февраля считается допустимой
+	if not month or type(month) ~= "number" or month < 1 or month > 12 then return nil
+	elseif month ~= 2 or not year then return mo_end_day[month] 
+	elseif month == 2 and (year % 4) == 0 and not ((not is_julian) and (year % 100 == 0 and year % 400 ~= 0)) then return 29
+	elseif month == 2 then return 28
+	else return nil -- в случае не целого значения входящих параметров или при иных непредусмотренных событиях
+	end
+end
+
+-- ХХХ функция к удалению ХХХ
 local function leap_year(y,jul)
 	if (not y) or (type(y) ~= "number")
 		then return false
@@ -286,6 +300,19 @@ local function leap_year(y,jul)
 	end
 end
 
+-- функция, проверяющая, корректная ли дата содержится в таблице
+-- считает что -300 это трёхсотый год д.н.э.
+local function is_date ( date, is_julian )
+	if not date or type(date) ~= "table" then return false
+	elseif	not number_in_range(date.month,1,12) or
+			not number_in_range(date.day,1,month_end_day(date.month,date.year,is_julian)) or
+			not number_in_range(date.year,-9999,9999) then
+				return false
+	elseif date.year ~= 0 then return true
+	end
+end	
+
+-- ХХХ к удалению - позволяет нулевой год ХХХ
 function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
 	if not chain then return false
 	elseif (not type(chain) == "table")
@@ -314,8 +341,105 @@ local function ispartdate ( chain )
 --  check for other calendars needed
 end
 
+-- функция для проверки, содержит ли таблица частичные сведения о дате
+local is_date_part = ispartdate--[[ ( date )
+	if not date then return false
+	elseif not (type(date) == "table") then return false
+	elseif (number_in_range(date.year,-9999,9999)
+	or number_in_range(date.month,1,12)
+	or number_in_range(date.day,1,31)) then return true
+	else return false
+	end
+end 
+--]]
+
+-- для дат, порядок которых неизвестен, пробует сначала прямой (dmy), затем обратный (ymd) порядок
+local function guess_date( triplet, is_julian ) -- только для дат после 31 года, пока не используется
+	local date = {["day"]=triplet[1],["month"]=triplet[2],["year"]=triplet[3]}
+	if is_date(date,is_julian) then return date end
+	local date = {["day"]=triplet[3],["month"]=triplet[2],["year"]=triplet[1]}
+	if is_date(date,is_julian) then return date end
+end
+
+local function guess_jd(status, first_date, second_date)
+--	if not is_date(first_date) or is_date(second_date) then
+--		return status
+--	end
+	local first_j_jd = jul2jd(first_date)
+	local first_g_jd = gri2jd(first_date)
+	local second_j_jd = jul2jd(second_date) 
+	local second_g_jd = gri2jd(second_date)
+--	mw.log(first_j_jd,first_g_jd,second_j_jd,second_g_jd)
+	if not first_j_jd or not first_g_jd or not second_j_jd or not second_g_jd then
+		local status, difference = partdist(status,first_date,second_date)
+		status.category = "erroneous_parameters"
+		status.error.msg = "wrong_calculation"
+		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
+	elseif first_j_jd == second_g_jd then
+		first_date.jd, first_date.calendar = first_j_jd, "julian"
+		second_date.jd, second_date.calendar = second_g_jd, "gregorian"
+	elseif first_g_jd == second_j_jd then
+		first_date.jd, first_date.calendar = first_g_jd, "gregorian"
+		second_date.jd, second_date.calendar = second_j_jd, "julian"
+	else
+		local difference = math.min(math.abs(first_j_jd-second_g_jd),math.abs(first_g_jd-second_j_jd))
+		status.category = "erroneous_parameters"
+		status.error.msg = "wrong_calculation"
+		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
+	end
+	return status, first_date, second_date
+end
+
+-- функция для нормализации значений дат и перевода месяцев в числа
+local function numerize(str)
+    if type(str) == "number" then
+        return math.floor(str)
+	elseif str == "" or str == nil or type(str) ~= "string" then
+		return nil
+    elseif type(tonumber(str)) == "number" then
+        return math.floor(tonumber(str))
+    else
+    	for i=1, #lang do
+    		if is_in_list(mw.ustring.lower(str),month_lang[lang[i]]) then
+				return reverse_month_lang[lang[i]][mw.ustring.lower(str)]
+			end
+    	end
+    end
+end
+
+-- функция для распознавания дат, заданных тремя значениями подряд, с исправлением ошибок
+local function decode_triple(d,m,y)
+	local year = numerize((y or ""):match("(%d+)"))
+	local month = numerize(mw.ustring.match((m or ""),"(%a+)"))
+	local day = numerize((d or ""):match("(%d+)"))
+	if not month then month = numerize(mw.ustring.match((d or ""),"(%a+)"))	end
+	if not day then day = numerize((m or ""):match("(%d+)")) end
+	if not year then year = numerize((m or ""):match("(%d+)")) end
+	local dateout = {["year"]=year, ["month"]=month, ["day"]=day}
+	return dateout
+end
+
+local function partdist(status,date1,date2)
+	local mont, dist = 0, 0
+	local d1d, d1m, d2d, d2m = date1["day"], date1["month"], date2["day"], date2["month"]
+	local d1de, d2de = month_end_day(d1m), month_end_day(d2m)
+	if not (number_in_range(d1m,1,12) and number_in_range(d2m,1,12)) then 
+		return status, math.huge
+	elseif not (number_in_range(d1d,1,d1de) and number_in_range(d2d,1,d2de)) then 
+		return status, math.huge
+	else
+		return status, (d1m == d2m and math.abs(d1d-d2d)) or ((d1d > d2d and (d1de - d1d + d2d)) or (d2de - d2d + d1d))
+	end
+end
+
 -- from date1 to date2 in one year (beetwen jan-dec, dec-jan needed)
-local function partdist(date1,date2)
+-- XXX          DELETE          XXX
+local function partdist_old(date1,date2)
+	local st, dist = partdist({},date1,date2)
+	return dist
+end
+--[==[
+local function partdist_old(date1,date2)
 	local mont, dist = 0, 0
 	local d1d, d1m, d2d, d2m = (date1["day"] or ""), (date1["month"] or ""),(date2["day"] or ""), (date2["month"] or "")
 	if not (inbord(d1d,1,31) and inbord(d2d,1,31)) then return false end
@@ -335,21 +459,22 @@ local function partdist(date1,date2)
 		return dist
 	else return math.huge
 	end
-end
+end 
+--]==]
 
 local function dmdist(d1,d2)
 	local p1,p2 = math.huge,math.huge
-	if not not partdist(d1,d2) then 
-		p1=partdist(d1,d2)
+	if not not partdist_old(d1,d2) then 
+		p1=partdist_old(d1,d2)
 	end
-	if not not partdist(d2,d1) then 
-		p1=partdist(d2,d1)
+	if not not partdist_old(d2,d1) then 
+		p1=partdist_old(d2,d1)
 	end
 --	if (not p1) or (not p2) then
 --		return  (p1 or "") .. (p2 or "")
 --	else
 --		mw.log("d1, d2 = " .. undate(d1) .. ", " .. undate(d2))
-		return math.min(tonumber(partdist(d1,d2)) or math.huge,tonumber(partdist(d2,d1)) or math.huge)
+		return math.min(tonumber(partdist_old(d1,d2)) or math.huge,tonumber(partdist(d2,d1)) or math.huge)
 --	end
 end
 
@@ -359,6 +484,32 @@ local function undate(tbl)
 	if not tbl then return ""
 	else return (tbl.year or "").."-"..(tbl.month or "").."-"..(tbl.day or "")
 	end
+end
+
+-- функция распознавания даты, переданной одной строкой
+local function parse_date(date_string)
+	if type(date_string) ~= "string" or date_string == "" then return nil end
+	local out_date_str = {nil,nil,nil}
+	local error_data = {}
+	for i=1, #pattern do
+		local result_1, result_2, result_3 = mw.ustring.match(date_string,pattern[i][1])
+		if (result_1 or "") > "" then 
+			out_date_str[pattern[i].order[1]], 
+    		out_date_str[pattern[i].order[2]], 
+    		out_date_str[pattern[i].order[3]] = 
+    			result_1, result_2, result_3
+    		break
+		end
+	end
+	if (not out_date_str[1]) or (not out_date_str[2]) or (not out_date_str[3]) then
+		error_data.msg = "no_pattern_match"
+		error_data.params = date_string
+	end
+	local date = {
+		["day"]  =numerize(out_date_str[1]), 
+		["month"]=numerize(out_date_str[2]), 
+		["year"] =numerize(out_date_str[3])}
+	return date, error_data
 end
 
 ----[[ УСТАРЕЛО ]]----
@@ -503,9 +654,16 @@ local function double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 end
 
 -- 40) Блок функций для перевода дат с использованием [[Юлианская дата]]
-
+-- конвертация григорианской даты в jd [[Julian day]]
 function gri2jd( datein )
-	if not isdate(datein) then return error((datein.day or "") .. "." .. (datein.month or "") .."." .. (datein.year or "") .. " неподходящая дата") end
+	if not is_date(datein) then 
+--		if type(status.error) ~= "table" then
+--			status.error = {}
+--		end
+--		status.error.msg = "no_valid_date"
+--		status.error.params = datein
+		return --status 
+	end
     local year = datein.year
     local month = datein.month
     local day = datein.day
@@ -518,13 +676,16 @@ function gri2jd( datein )
     -- jd validation
     local low, high = -1931076.5, 5373557.49999
     if not (low <= jd and jd <= high) then
-        return error((datein.day or "") .. "." .. (datein.month or "") .. "." .. (datein.year or "") .. " выходит за пределы разрешённого диапазона")
+--    	status.error.msg = "wrong_jd"
+--    	status.error.params = jd
+        return --status
     end
 	return jd
 end
 
+-- конвертация jd в дату по юлианскому календарю
 function jd2jul( jd )
-	if type(jd) ~= "number" then return error("Промежуточная переменная " .. (jd or "") .. " не является числом") end
+	if type(jd) ~= "number" then return error("Wrong jd") end
     -- calendar date calculation
     local c = jd + 32082
     local d = math.floor((4*c + 3)/1461)
@@ -534,12 +695,20 @@ function jd2jul( jd )
     local month_out = m + 3 - 12*math.floor(m/10)
     local day_out = e - math.floor((153*m + 2)/5) + 1
     -- output
-    local dateout = {["year"]=year_out, ["month"]=month_out, ["day"]=day_out}
+    local dateout = {["jd"]=jd, ["year"]=year_out, ["month"]=month_out, ["day"]=day_out,["calendar"]="julian"}
     return dateout
 end
 
+-- конвертация даты по юлианскому календарю в jd
 function jul2jd( datein )
-	if not isdate(datein,true) then return error((datein.day or "") .. "." .. (datein.month or "") ..".".. (datein.year or "") .. " неподходящая дата") end
+	if not is_date(datein,true) then 
+--		if type(status.error) ~= "table" then
+--			status.error = {}
+--		end
+--		status.error.msg = "no_valid_date"
+--		status.error.params = datein
+		return --status 
+	end
     local year = datein.year
     local month = datein.month
     local day = datein.day
@@ -552,13 +721,15 @@ function jul2jd( datein )
     -- jd validation
     local low, high = -1930999.5, 5373484.49999
     if not (low <= jd and jd <= high) then
-        return error((datein.day or "") .. "." .. (datein.month or "") .."." .. (datein.year or "") .. " выходит за пределы разрешённого диапазона")
+--    	status.error.msg = "wrong_jd"
+--    	status.error.params = jd
+        return --status
     end
 	return jd
 end
 
+-- конвертация jd в григорианскую дату
 function jd2gri( jd )
-	if type(jd) ~= "number" then return error("Промежуточная переменная " .. (jd or "") .. " не является числом") end
     -- calendar date calculation
     local a = jd + 32044
     local b = math.floor((4*a + 3) / 146097)
@@ -570,11 +741,29 @@ function jd2gri( jd )
     local month_out = m + 3 - 12*math.floor(m/10)
     local year_out = 100*b + d - 4800 + math.floor(m/10)
     -- output
-    local dateout = {["year"]=year_out, ["month"]=month_out, ["day"]=day_out}
+    local dateout = {["jd"]=jd, ["year"]=year_out, ["month"]=month_out, ["day"]=day_out, ["calendar"]="gregorian"}
     return dateout
 end
 
-function astroyear(num, bc)
+-- для записи типа -100 год = 100 год до н.э. (с разрывом в нуле)
+function astroyear(status, num, bc)
+	local year
+	if not num or type(num) ~= "number" then 
+		status.error.msg = "tech_error"
+		status.error.params = "astroyear"
+	elseif num < 1 then 
+		year = 1 + num 
+	end 
+	-- todo: запрет нулевого года?
+	if not bc then return status, num
+	else year = 1 - num
+	end
+	return status, year
+end
+
+-- старая версия, несовместимая с форматом ВикиДаты днэ
+-- 4713 до н. э. = −4712 г.
+function astroyear_old(num, bc)
 	if not num then return error()
 	elseif type(num) ~= "number" then return error()
 	end
@@ -584,13 +773,30 @@ function astroyear(num, bc)
 	end
 end
 
-function recalc(datein,calend)
+-- XXX function need to be deleted XXX
+local function recalc_old(datein,calend)
 	if inlist(calend,params[1]) then 
 		return jd2jul(gri2jd(datein)), datein
    	elseif inlist(calend,params[2]) then
 		return datein, jd2gri(jul2jd(datein))
    	else error("Параметр " .. (calend or "") .. " не опознан, разрешённые: " .. table.concat(params[1]," ") .. " и " .. table.concat(params[2]," "))
    	end
+end
+
+function recalc(status,date,cal)
+	if is_in_list(cal,calendars[1]) then 
+		date.jd, date.calendar = gri2jd(date), "gregorian"
+		status.processed, status.second_date, status.dates = true, true, 2
+		return status, date, jd2jul(date.jd) 
+	elseif is_in_list(cal,calendars[2]) then
+		date.jd, date.calendar = jul2jd(date), "julian"
+		status.processed, status.second_date, status.dates = true, true, 2
+		return status, date, jd2gri(date.jd)
+	else 
+		status.error.msg = "unknown_calendar"
+		status.error.params = cal
+		return status
+	end
 end
 
 -- 50) Функции для обработки UTC
@@ -651,9 +857,190 @@ local function utc(str,margin)
 	output = beginning .. dchar .. math.abs(hmarg) .. ":" .. string.format("%02d",mmarg) .. ending .. cat
 	return output
 end
+-- 60) Отладочные функции
 
--- 60) Блок функций ввода-вывода
+-- функции для отображения дат в отладочных сообщениях
+local function o(str,arg)
+	return (arg and (arg .. ": ") or "") .. (str and (bool2num[str] .. " — ") or "")
+end
 
+local function unwarp(tbl)
+	if not tbl then return ""
+	elseif type(tbl) ~= "table" then return tbl
+	elseif (tbl.day or tbl.month or tbl.year) then 
+		return (tbl.year or "¤").."•"..(tbl.month or "¤").."•"..(tbl.day or "¤")
+	else return (tbl[3] or "¤").."-"..(tbl[2] or "¤").."-"..(tbl[1] or "¤")
+	end
+end
+
+local function error_output(status)
+	if (status.error.msg or "") > "" then 
+		if type(status.error.params) == "table" and not status.error.params[1] then
+			return errors.start .. string.format(errors[status.error.msg], 
+				status.error.params.day or "", status.error.params.month or "", 
+				status.error.params.year or "") .. errors.ending
+		elseif type(status.error.params) == "table" and status.error.params[1] then
+			return errors.start .. string.format(errors[status.error.msg], 
+				unwarp(status.error.params[1] or ""), unwarp(status.error.params[2] or ""), 
+				unwarp(status.error.params[3] or "")) .. errors.ending
+		else
+			return errors.start .. string.format(errors[status.error.msg],status.error.params or "") .. errors.ending 
+		end
+	end
+end
+
+-- 80) Основные функции обработки
+local function processing(status,input,max_arg)
+	local first_date_string, second_date_string, category = "", "", ""
+	local first_date, second_date = {}, {}
+	if max_arg <= 3 then
+		first_date_string = table.concat({input[1] or "", input[2] or "", input[3] or ""}, " ")
+		first_date, status.error = parse_date(first_date_string)
+		if (status.error.msg or "") > "" then return status end
+		if is_date(first_date,true) then
+			status.dates, status.processed, status.first_date = 1, true, true
+			return status, first_date
+		else 
+			status.dates = 0
+			status.error.msg = "no_valid_date"
+			status.error.params = first_date
+			return status
+		end
+	elseif max_arg > 3 and max_arg <= 6 then
+		if is_complete(input,1,6) then
+			first_date_string = table.concat({input[1], input[2], input[3]}, " ")
+			second_date_string = table.concat({input[4], input[5], input[6]}, " ")
+			first_date, second_date = parse_date(first_date_string), parse_date(second_date_string)
+		else 
+			first_date = decode_triple(input[1], input[2], input[3])
+			second_date = decode_triple(input[4], input[5], input[6])
+		end
+		if is_date(first_date,true) then status.first_date = true 
+		elseif is_date_part(first_date) then status.first_date = 1 end
+		if is_date(second_date,true) then status.second_date = true 
+		elseif is_date_part(second_date) then status.second_date = 1 end
+		if status.first_date == true and status.second_date == true then 
+			status.dates, status.processed = 2, true
+		else 
+			status.dates = bool2num[status.first_date] + bool2num[status.second_date]
+			status.category = "incomplete_parameters" 
+		end
+		return status, first_date, second_date
+	elseif max_arg> 6 then
+		status.error.msg = "too_many_arguments"
+		status.error.params = max_arg
+		return status
+	end
+end
+
+local function mix_data(status,first_date,second_date)
+	status.processed = 1
+	for i, k in pairs(time_units) do
+		if not first_date[k] and second_date[k] then 
+			first_date[k] = second_date[k]
+		elseif not second_date[k] and first_date[k] then
+			second_date[k] = first_date[k]
+		end
+	end
+	return status, first_date, second_date
+end
+
+-- в соответствии с таблицами принимаемых аргументов обрабатывает ввод
+function read_args(status, input)
+	if not status or type(status) ~= "table" then
+		status = {}
+		status.error = {}
+		status.error.msg = "tech_error"
+		status.error.params = "read_args"
+	elseif not input or type(input) ~= "table" then
+		status.error.msg = "tech_error"
+		status.error.params = "read_args"
+	else
+		for i,v in pairs(unik_args) do
+			if unik_args_bool[i] then
+				input[v] = is(input[v])
+			end
+		end
+		for i,v in pairs(dual_args) do
+			if dual_args_bool[i] then
+				local both = is(input[v])
+				if both then
+					input[v..1], input[v..2] = true, true
+				else
+					input[v..1], input[v..2] = is(input[v..1]), is(input[v..2])
+				end
+			else
+				if input[v] and input[v]>"" then
+					input[v..1], input[v..2] = input[v], input[v]
+				end
+			end
+		end
+	end
+	if input.ny1 then input.ym1, input.wy1 = nil, false end
+	if input.ny2 then input.ym2, input.wy2 = nil, false end
+	return status, input
+end
+
+-- 90) Задание специфических строк-объектов
+
+-- Раздел "snippet": объекты, которые содержат текст и условия, которые используются при их соединении
+-- Определение прототипа объекта
+local snippet = {["__index"] = {["text"] = "", ["a"] = 1.5, ["z"] = 1.5}}
+
+-- Метод для создания новых объектов, может принимать как таблицу с условиями, так и строку
+function snippet:dress (var)
+  if not self or type(self) ~= "table" then return end -- ошибка не обрабатывается
+  -- в случае если на входе уже объект нужного класса, возвращаем его же
+  if type(var) == "table" and getmetatable(var) == self then
+    return var
+  end
+  -- если на вход не подано параметров, создаём пустую таблицу
+  var = var or {}
+  -- если на вход подан текст или число, обрабатываем их
+  if type(var) ~= "table" and (type(var) == "string" or type(var) == "number") then
+    local text = var
+    var = {["text"]=text}
+  elseif type(var) ~= "table" then return end -- обработчик ошибок без входящего параметра status и без создания замыканий сюда бы
+  setmetatable(var,self)
+  return var
+end
+
+-- Функция сравнения объектов
+function snippet.__eq (pre, aft)
+    return pre.text == aft.value and pre.a == aft.a and pre.z == aft.z
+end
+
+-- Функция сложения объектов, на выходе даёт объект того же типа
+function snippet.__add (pre,aft)
+  pre=snippet:dress(pre)
+  aft=snippet:dress(aft)
+  if pre == empty or pre.text == "" then return aft end
+  if aft == empty or aft.text == "" then return pre end
+  local sill = pre.z + aft.a
+  local output = {
+      ["text"] = pre.text .. ((sill > 2) and " " or "") .. aft.text, 
+      ["a"] = pre.a, 
+      ["z"] = aft.z
+    }
+  return snippet:dress(output)
+end
+--[[в зависимости от значений "a" и "z" между объектами ставится или не ставится пробел:
+	 	0	1	2	3
+	0	-	-	-	+
+	1	-	-	+	+
+	2	-	+	+	+
+	3	+	+	+	+
+]]--
+-- Функция для отображения объекта в виде текста
+function snippet.__tostring (table)
+  if type(table) == "table" then
+    return table.text
+  end
+end
+
+-- 95) Блок функций ввода-вывода
+-- Перед функциями расположен код, который позволяет проверять
+-- работу модуля непосредственно в 
 function p.NthDay( frame )
     local args = getArgs(frame, { frameOnly = true })
     local num, wday, mont, yea, format = 
@@ -789,7 +1176,7 @@ function p.OldDate( frame )
 --  local catName = args["catName"] or false
     local datein = numstr2date(strin)
     datein.year = astroyear(datein.year, bc)
-    jdate, gdate = recalc(datein,cal)
+    jdate, gdate = recalc_old(datein,cal)
 	return double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 end
 
@@ -827,7 +1214,7 @@ function p.NewDate( frame )
 	year = astroyear(purif(year),bc)
 	local datein = {["year"]=purif(year), ["month"]=purif(month), ["day"]=purif(day)}
 
-	jdate, gdate = recalc(datein,cal)
+	jdate, gdate = recalc_old(datein,cal)
 
     local yearmark = "года"
     local ym = args["yearmark"] or ""
@@ -842,17 +1229,17 @@ function p.NewDate( frame )
 	return double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 end
 
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={}})
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"3","июня",nil,"21","мая"}})
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"28 августа","","1916 года","15"}})
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"3","июня","1900","21","мая"}})
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"6","июня","1889 год","25","мая"}}) 
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"28","ноября","1917","15"}})
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"28 августа","nil","1916 года","15"}}) 
--- =p.Test(mw.getCurrentFrame():newChild{title="smth",args={"4","января","1915","22","декабря","1914 года"}}) 
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={}})
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"3","июня",nil,"21","мая"}})
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"28 августа","","1916 года","15"}})
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"3","июня","1900","21","мая"}})
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"6","июня","1889 год","25","мая"}}) 
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"28","ноября","1917","15"}})
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"28 августа","nil","1916 года","15"}}) 
+-- =p.NewerDate(mw.getCurrentFrame():newChild{title="smth",args={"4","января","1915","22","декабря","1914 года"}}) 
 -- {{OldStyleDate|день (НС)|месяц (НС)|год (НС)|день (СС)|месяц (СС)|год (СС)}}
 
-function p.Test( frame )
+function p.NewerDate( frame )
 	local args = getArgs(frame, { frameOnly = true })
 	-- необходима проверка и замена nil на " "
 --[[mw.log((args[1] or "") .. " " .. 
@@ -888,11 +1275,11 @@ function p.Test( frame )
     end
     if isdate(ingdate) or isdate(injdate) then
 		if isdate(ingdate) then
-			j1date, g1date = recalc(ingdate,"g")
+			j1date, g1date = recalc_old(ingdate,"g")
 			ingdate["full"] = true
 		end
 		if isdate(injdate) then
-			j2date, g2date = recalc(injdate,"j")
+			j2date, g2date = recalc_old(injdate,"j")
 			injdate["full"] = true
 		end
 		if ispartdate(ingdate) and ispartdate(injdate) then
@@ -935,7 +1322,7 @@ function p.Test( frame )
 		mw.log("j2date " .. (undate(j2date ) or ""))
 		mw.log("g1date " .. (undate(g1date ) or ""))
 		mw.log("g2date " .. (undate(g2date ) or ""))
-		mw.log("📏 " .. (tostring(partdist(ingdate,injdate)) or "").. " — " .. (tostring(partdist(injdate,ingdate)) or ""))
+		mw.log("📏 " .. (tostring(partdist_old(ingdate,injdate)) or "").. " — " .. (tostring(partdist_old(injdate,ingdate)) or ""))
 		return glue(args[1],args[2],args[3],args[4],args[5],args[6]) 
 		-- частичный или полный вывод, категория
 	else 
@@ -948,5 +1335,162 @@ function p.Test( frame )
 		return err .. category["params"]
 	end
 end
+
+--[[
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"15","августа"," ","2"," "," ",["cal"]="g",["wdm2"]=1,["wy2"]=1}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"15","августа",nil,"2",["cal"]="g",["wdm2"]=1,["wy2"]=1}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"32.1.2020",["cal"]="j"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23.12.1855",["cal"]="j",["wy2"]=1,["wdm2"]=1}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["wy"]=1,["wdm"]=1,["ny2"]=1,["sq_brts"]=1,["ym1"]="г."}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["sq_brts"]=true}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["bc"]=1,["wy"]=1,["br_in"]=1,["wdm2"]=1,["ny1"]=1,}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="j"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"30","апреля",nil,"17"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"30","апреля","2020","17"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"31","апреля","2020"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23 juin 2020"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23 октября 2020"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23.10.2020",cal="г"}})
+=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"2020-10-23",cal="ю"}})
+]]--
+function p.Test( frame )
+	-- инициализация, заполнение обратных таблиц, копирование параметров
+	filling_months(lang, month_lang)
+	local args = getArgs(frame, { removeBlanks = false, frameOnly = true })
+	local input, max_arg = copy_it(args)
+
+--	mw.log("(" .. #input .. ", " .. max_arg .. ")", unpack(input))
+	-- перевод строковых параметров в числовые
+	input.cal = input.cal or "j"
+	local status, first_date, second_date = {processed=false,first_date=false,second_date=false,category="",error={msg="",params=""}}
+	status, first_date, second_date =	processing(status,input,max_arg)
+	-- перевод параметров оформления в булевые
+	status, input = read_args(status, input)
+	
+	-- применение параметра до нашей эры или сдвиг отрицательных дат, чтобы не было разрыва в нулевом году
+	if first_date then status, first_date.year = astroyear(status, first_date.year, input.bc) end
+	if second_date then status, second_date.year = astroyear(status, second_date.year, input.bc) end
+	
+	-- проверка и дополнение дат
+	if (status.dates or 0) > 1 and status.processed ~= true then
+		status, first_date, second_date = mix_data(status,first_date,second_date)
+		status, first_date, second_date = guess_jd(status,first_date,second_date)
+	elseif status.dates == 1 then
+		status, first_date, second_date = recalc(status,first_date,input.cal)
+	elseif max_arg < 3 then
+		if status.error.msg then
+		else
+			status.error.msg = "too_little_arguments"
+			status.error.params = max_arg
+		end
+	else
+		status.error.msg = "unknown_error"
+		status.error.params = ""
+	end
+	
+	--[[ ошибка если даты сформированы не полностью
+	if first_date and not first_date.year and second_date and not second_date.year then 
+		error("Даты " .. unwarp(first_date)  .. " и " .. unwarp(second_date)  .. " не содержат год. " .. 
+			(error_output(status) or "") .. " — " .. 
+			(o(status.processed,"processed") or "") ..
+			(o(status.first_date,"first_date") or "") ..
+			(o(status.second_date,"second_date") or "") ..
+			(o(status.category,"category") or ""))
+	end
+	--]]
+	-- ошибка в случае если даты не сформированы
+	if not first_date or not second_date then return error_output(status) end
+	if     first_date.calendar  == "julian" and second_date.calendar == "gregorian" then
+	elseif second_date.calendar == "julian" and first_date.calendar  == "gregorian" then
+		local swap_date = first_date
+		first_date = second_date
+		second_date = swap_date
+	else
+		status.error.msg = "unknown_error"
+		status.error.params = ""
+	end
+	
+	input.wy1 = first_date.year and input.wy1 or nil
+	input.wy2 = second_date.year and input.wy2 or nil
+	
+--	mw.logObject(input)
+--	mw.logObject(status)
+--	mw.logObject(first_date)
+--	mw.logObject(second_date)
+
+	-- ниже задаются условия поведения кусков текста - в зависимости от каких параметров они принимают какие значения
+	-- если нужно более сложное поведение чем "bool and true_result or false_result", то их можно заменить на анонимные функции
+	input.lang = input.lang or "ru"
+	local space = snippet:dress{["text"]= " ", a=0, z=0}
+	local empty = snippet:dress{["text"]= "", a=0, z=0}
+	local left = snippet:dress{["text"] = args.sq_brts and "&#091;" or "(", ["a"] = 3, ["z"] = 0}
+	local right = snippet:dress{["text"] = args.sq_brts and "&#093;" or ")", ["a"] = 0, ["z"] = 3}
+	local bc_mark1 = (first_date.year and first_date.year < 1) and snippet:dress{["text"]= "до н. э." } or empty
+	local bc_mark2 = (second_date.year and second_date.year < 1) and snippet:dress{["text"]=  "до н. э." } or empty
+	first_date.year = (first_date.year and first_date.year < 1) and -first_date.year or first_date.year
+	second_date.year = (second_date.year and second_date.year < 1) and -second_date.year or second_date.year
+	local jdd, jdm, jdy  = 
+		snippet:dress{["text"]=first_date.day}, 
+		snippet:dress{["text"]=month_lang[input.lang][first_date.month]}, 
+		snippet:dress{["text"]=(input.ny1 or not first_date.year) and "" or first_date.year .. ((input.ym1 and " " or "") .. (input.ym1 or "")),
+			a = input.ny1 and 0 or nil, z= input.ny1 and 0 or nil}
+	local gdd, gdm, gdy = 
+		snippet:dress{["text"]=second_date.day}, 
+		snippet:dress{["text"]=month_lang[input.lang][second_date.month]}, 
+		snippet:dress{["text"]=(input.ny2 or not second_date.year) and "" or second_date.year .. ((input.ym2 and " " or "") .. (input.ym2 or "")),
+			a = input.ny2 and 0 or nil, z= input.ny2 and 0 or nil}
+		
+	local wdm1_, wdm2_, wy1_, wy2_ =
+		snippet:dress{["text"]= input.wdm1 and table.concat{
+			"[[", jdd.text," ",jdm.text ,"|"} or "", a=input.wdm1 and 2 or 0, z=0},
+		snippet:dress{["text"]= input.wdm2 and table.concat{
+			"[[", gdd.text," ",gdm.text ,"|"} or "", a=input.wdm2 and 2 or 0, z=0},
+		snippet:dress{["text"]= (input.wy1 and first_date.year) and ("[[" .. first_date.year .. " год" .. 
+			(bc_mark1.text > "" and (" " .. bc_mark1.text) or "") .. "|") or "", a=input.wy1 and 2 or 0, z=0},
+		snippet:dress{["text"]= (input.wy2 and second_date.year) and ("[[" .. second_date.year .. " год" .. 
+			(bc_mark2.text > "" and (" " .. bc_mark2.text) or "") .. "|") or "", a=input.wy2 and 2 or 0, z=0}
+	local wdm_1, wdm_2, wy_1, wy_2 =
+		snippet:dress{["text"]= input.wdm1 and "]]" or "", a=0, z=input.wdm1 and 2 or 0},
+		snippet:dress{["text"]= input.wdm2 and "]]" or "", a=0, z=input.wdm2 and 2 or 0},		
+		snippet:dress{["text"]= input.wy1 and "]]" or "", a=0, z=input.wy1 and 2 or 0},
+		snippet:dress{["text"]= input.wy2 and "]]" or "", a=0, z=input.wy2 and 2 or 0}	
+	local cdm, cdy = empty, empty
+	
+	input.order = input.order or "zip"
+	
+	if input.order == "zip" then
+		if first_date.month == second_date.month then
+			cdm = mw.clone(jdm)
+			jdm, gdm = empty, empty
+		end
+		if first_date.year == second_date.year then
+			cdy = mw.clone(jdy)
+			jdy, gdy = empty, empty
+			cdy = wy2_ + cdy + bc_mark2 + wy_2
+			wy1_, wy_1 = empty, empty
+			wy2_, wy_2 = empty, empty
+			bc_mark1, bc_mark2 = empty, empty
+		end
+	end
+
+	local j_day_month = wdm1_ + jdd + jdm + wdm_1
+	local j_year = wy1_ + jdy + bc_mark1 + wy_1
+	local g_day_month = wdm2_ + gdd + gdm + wdm_2
+	local g_year = wy2_ + gdy + bc_mark2 + wy_2
+
+	if input.order == "full" then
+		return mw.text.trim(tostring(j_day_month + j_year + left + g_day_month + g_year + right))
+	elseif input.order == "zip" then
+		return mw.text.trim(tostring(j_day_month + j_year + left + g_day_month + g_year + right  + cdm + cdy))
+	else
+		return
+	end
+	
+	if status.error then 
+		return error_output(status) 
+	end
+
+--	todo - part date dist check, year mark from double triplets, julian span comment, br_in?, check if format table is full, add short formats d.m.y - 1/01
+end 
 
 return p
