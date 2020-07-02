@@ -68,7 +68,7 @@ local monthlang = {"января","февраля","марта","апреля","
 local month_to_num = {["января"]=1,["февраля"]=2,["марта"]=3,["апреля"]=4,["мая"]=5,["июня"]=6,
 	["июля"]=7,["августа"]=8,["сентября"]=9,["октября"]=10,["ноября"]=11,["декабря"]=12,["-"]=""}
 local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
-local calendars = {{"г", "g"}, {"ю", "j"}}
+local calendars = {{"г", "g"}, {"ю", "j"}} 
 local comment = { '<span style="border-bottom: 1px dotted; cursor: help" title="по юлианскому календарю">','</span>'}
 -- local category = {["params"]="<!--[[Категория:Модуль:calendar:Страницы с некорректными параметрами]]-->"}
 
@@ -110,29 +110,31 @@ end
 -- IST = India Standard Time +5:30, Irish Standard Time +1, Israel Standard Time +2
 -- MST = Malaysia Standard Time +8, Mountain Time Zone -7, +06:30
 -- PST = Pacific Standard Time -8, Pakistan Standard Time +5, Philippine Standard Time +8
+-- ECT = Ecuador Time -5, '-04:00'
+-- SST = Singapore Standard Time +8, Samoa Standard Time -11
 local known_tzs = {
    ACDT='+10:30', ACST='+09:30', ACT ='+08:00', ADT  ='-03:00', AEDT ='+11:00',
    AEST='+10:00', AFT ='+04:30', AKDT='-08:00', AKST ='-09:00', AMST ='+05:00',
    AMT ='+04:00', ART ='-03:00', 
    AST ='-04:00', AWDT='+09:00', AWST='+08:00', AZOST='-01:00', AZT  ='+04:00',
    BDT ='+08:00', BIOT='+06:00', BIT ='-12:00', BOT  ='-04:00', BRT  ='-03:00',
-   BST ='+01:00', BTT ='+06:00', CAT  ='+02:00', CCT  ='+06:30',
+   BST ='+01:00', BTT ='+06:00', CAT ='+02:00', CCT  ='+06:30',
    CDT ='-05:00', CEDT='+02:00', CEST='+02:00', CET  ='+01:00', CHAST='+12:45',
    CIST='-08:00', CKT ='-10:00', CLST='-03:00', CLT  ='-04:00', COST ='-04:00',
-   COT ='-05:00', CST ='-06:00', CVT  ='-01:00', CXT  ='+07:00',
-   CHST='+10:00', DFT ='+01:00', EAST='-06:00', EAT  ='+03:00', ECT  ='-04:00',
+   COT ='-05:00', CST ='-06:00', CVT ='-01:00', CXT  ='+07:00',
+   CHST='+10:00', DFT ='+01:00', EAST='-06:00', EAT  ='+03:00', 
    ECT ='-05:00', EDT ='-04:00', EEDT='+03:00', EEST ='+03:00', EET  ='+02:00',
    EST ='-05:00', FJT ='+12:00', FKST='-03:00', FKT  ='-04:00', GALT ='-06:00',
    GET ='+04:00', GFT ='-03:00', GILT='+12:00', GIT  ='-09:00', GMT  ='+00:00',
    GST ='-02:00', GYT ='-04:00', HADT='-09:00', HAST ='-10:00', HKT  ='+08:00',
    HMT ='+05:00', HST ='-10:00', IRKT='+08:00', IRST ='+03:30', IST  ='+05:30',
-   JST ='+09:00', KRAT ='+07:00', KST  ='+09:00',
+   JST ='+09:00', KRAT='+07:00', KST ='+09:00',
    LHST='+10:30', LINT='+14:00', MAGT='+11:00', MDT  ='-06:00', MIT  ='-09:30',
    MSD ='+04:00', MSK ='+03:00', MST ='+08:00',
    MUT ='+04:00', NDT ='-02:30', NFT ='+11:30', NPT  ='+05:45', NST  ='-03:30',
    NT  ='-03:30', OMST='+06:00', PDT ='-07:00', PETT ='+12:00', PHOT ='+13:00',
-   PKT ='+05:00', PST ='-08:00', RET  ='+04:00', SAMT ='+04:00',
-   SAST='+02:00', SBT ='+11:00', SCT ='+04:00', SLT  ='+05:30', SST  ='-11:00',
+   PKT ='+05:00', PST ='-08:00', RET ='+04:00', SAMT ='+04:00',
+   SAST='+02:00', SBT ='+11:00', SCT ='+04:00', SLT  ='+05:30',
    SST ='+08:00', TAHT='-10:00', THA ='+07:00', UTC  ='+00:00', UYST ='-02:00',
    UYT ='-03:00', VET ='-04:30', VLAT='+10:00', WAT  ='+01:00', WEDT ='+01:00',
    WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00',
@@ -140,6 +142,7 @@ local known_tzs = {
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
 }
 
+-- VVV needs to be filled automaticly VVV
 local tzs_names = {"ACDT","ACST","ACT","ADT","AEDT","AEST","AFT","AKDT","AKST",
 "AMST","AMT","ART","AST","AST","AST","AST","AWDT","AWST","AZOST","AZT","BDT",
 "BIOT","BIT","BOT","BRT","BST","BST","BTT","CAT","CCT","CDT","CEDT","CEST",
@@ -367,6 +370,58 @@ local function guess_date( triplet, is_julian ) -- только для дат п
 	if is_date(date,is_julian) then return date end
 end
 
+local function partdist(status,date1,date2)
+	local mont, dist = 0, 0
+	local d1d, d1m, d2d, d2m = date1["day"], date1["month"], date2["day"], date2["month"]
+	local d1de, d2de = month_end_day(d1m), month_end_day(d2m)
+	if not (number_in_range(d1m,1,12) and number_in_range(d2m,1,12)) then 
+		return status, math.huge
+	elseif not (number_in_range(d1d,1,d1de) and number_in_range(d2d,1,d2de)) then 
+		return status, math.huge
+	else
+		return status, (d1m == d2m and math.abs(d1d-d2d)) or ((d1d > d2d and (d1de - d1d + d2d)) or (d2de - d2d + d1d))
+	end
+end
+
+-- from date1 to date2 in one year (beetwen jan-dec, dec-jan needed)
+-- XXX          DELETE          XXX
+local function partdist_old(date1,date2)
+	local st, dist = partdist({},date1,date2)
+	return dist
+end
+--[==[
+local function partdist_old(date1,date2)
+	local mont, dist = 0, 0
+	local d1d, d1m, d2d, d2m = (date1["day"] or ""), (date1["month"] or ""),(date2["day"] or ""), (date2["month"] or "")
+	if not (inbord(d1d,1,31) and inbord(d2d,1,31)) then return false end
+	-- нужна доп. проверка частичных дат на корректность
+	if (inbord(d1m,1,12) or inbord(d2m,1,12))
+	and (d1m == "" or d2m == "") then
+		mont = purif(date1["month"] or date2["month"])
+		d1m, d2m = mont, mont
+	end
+--	mw.log("📏 day: " ..d1d .."->"..d2d.." month: ".. d1m.."->"..d2m )
+	if (inbord(d1m,1,12) and d1d <= monthd[d1m])
+	and (inbord(d2m,1,12) and d2d <= monthd[d2m])	then 
+		if d2m == d1m 
+		then dist = d2d - d1d
+		else dist = monthd[d1m] - d1d + d2d
+		end
+		return dist
+	else return math.huge
+	end
+end 
+--]==]
+
+local function unwarp(tbl)
+	if not tbl then return ""
+	elseif type(tbl) ~= "table" then return tbl
+	elseif (tbl.day or tbl.month or tbl.year) then 
+		return (tbl.year or "¤").."•"..(tbl.month or "¤").."•"..(tbl.day or "¤")
+	else return (tbl[3] or "¤").."-"..(tbl[2] or "¤").."-"..(tbl[1] or "¤")
+	end
+end
+
 local function guess_jd(status, first_date, second_date)
 --	if not is_date(first_date) or is_date(second_date) then
 --		return status
@@ -424,49 +479,6 @@ local function decode_triple(d,m,y)
 	local dateout = {["year"]=year, ["month"]=month, ["day"]=day}
 	return dateout
 end
-
-local function partdist(status,date1,date2)
-	local mont, dist = 0, 0
-	local d1d, d1m, d2d, d2m = date1["day"], date1["month"], date2["day"], date2["month"]
-	local d1de, d2de = month_end_day(d1m), month_end_day(d2m)
-	if not (number_in_range(d1m,1,12) and number_in_range(d2m,1,12)) then 
-		return status, math.huge
-	elseif not (number_in_range(d1d,1,d1de) and number_in_range(d2d,1,d2de)) then 
-		return status, math.huge
-	else
-		return status, (d1m == d2m and math.abs(d1d-d2d)) or ((d1d > d2d and (d1de - d1d + d2d)) or (d2de - d2d + d1d))
-	end
-end
-
--- from date1 to date2 in one year (beetwen jan-dec, dec-jan needed)
--- XXX          DELETE          XXX
-local function partdist_old(date1,date2)
-	local st, dist = partdist({},date1,date2)
-	return dist
-end
---[==[
-local function partdist_old(date1,date2)
-	local mont, dist = 0, 0
-	local d1d, d1m, d2d, d2m = (date1["day"] or ""), (date1["month"] or ""),(date2["day"] or ""), (date2["month"] or "")
-	if not (inbord(d1d,1,31) and inbord(d2d,1,31)) then return false end
-	-- нужна доп. проверка частичных дат на корректность
-	if (inbord(d1m,1,12) or inbord(d2m,1,12))
-	and (d1m == "" or d2m == "") then
-		mont = purif(date1["month"] or date2["month"])
-		d1m, d2m = mont, mont
-	end
---	mw.log("📏 day: " ..d1d .."->"..d2d.." month: ".. d1m.."->"..d2m )
-	if (inbord(d1m,1,12) and d1d <= monthd[d1m])
-	and (inbord(d2m,1,12) and d2d <= monthd[d2m])	then 
-		if d2m == d1m 
-		then dist = d2d - d1d
-		else dist = monthd[d1m] - d1d + d2d
-		end
-		return dist
-	else return math.huge
-	end
-end 
---]==]
 
 local function dmdist(d1,d2)
 	local p1,p2 = math.huge,math.huge
@@ -781,11 +793,11 @@ end
 
 -- XXX function need to be deleted XXX
 local function recalc_old(datein,calend)
-	if inlist(calend,params[1]) then 
+	if inlist(calend,calendars[1]) then 
 		return jd2jul(gri2jd(datein)), datein
-   	elseif inlist(calend,params[2]) then
+   	elseif inlist(calend,calendars[2]) then
 		return datein, jd2gri(jul2jd(datein))
-   	else error("Параметр " .. (calend or "") .. " не опознан, разрешённые: " .. table.concat(params[1]," ") .. " и " .. table.concat(params[2]," "))
+   	else error("Параметр " .. (calend or "") .. " не опознан, разрешённые: " .. table.concat(calendars[1]," ") .. " и " .. table.concat(calendars[2]," "))
    	end
 end
 
@@ -868,15 +880,6 @@ end
 -- функции для отображения дат в отладочных сообщениях
 local function o(str,arg)
 	return (arg and (arg .. ": ") or "") .. (str and (bool2num[str] .. " — ") or "")
-end
-
-local function unwarp(tbl)
-	if not tbl then return ""
-	elseif type(tbl) ~= "table" then return tbl
-	elseif (tbl.day or tbl.month or tbl.year) then 
-		return (tbl.year or "¤").."•"..(tbl.month or "¤").."•"..(tbl.day or "¤")
-	else return (tbl[3] or "¤").."-"..(tbl[2] or "¤").."-"..(tbl[1] or "¤")
-	end
 end
 
 local function error_output(status)
@@ -1017,6 +1020,8 @@ function snippet.__eq (pre, aft)
 end
 
 -- Функция сложения объектов, на выходе даёт объект того же типа
+local empty = snippet:dress{["text"]= "", a=0, z=0}
+
 function snippet.__add (pre,aft)
   pre=snippet:dress(pre)
   aft=snippet:dress(aft)
@@ -1428,7 +1433,6 @@ function p.Test( frame )
 	-- если нужно более сложное поведение чем "bool and true_result or false_result", то их можно заменить на анонимные функции
 	input.lang = input.lang or "ru"
 	local space = snippet:dress{["text"]= " ", a=0, z=0}
-	local empty = snippet:dress{["text"]= "", a=0, z=0}
 	local left = snippet:dress{["text"] = args.sq_brts and "&#091;" or "(", ["a"] = 3, ["z"] = 0}
 	local right = snippet:dress{["text"] = args.sq_brts and "&#093;" or ")", ["a"] = 0, ["z"] = 3}
 	local bc_mark1 = (first_date.year and first_date.year < 1) and snippet:dress{["text"]= "до н. э." } or empty
