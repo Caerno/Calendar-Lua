@@ -104,32 +104,38 @@ local filling_months = function (lang, month_lang)
 	end
 end
 
+-- AST = Atlantic Standard Time -4, Arabia Standard Time +3,
+-- BST = British Summer Time +1, Bangladesh Standard Time +6
+-- CST = Central Standard Time -6, China Standard Time +8
+-- IST = India Standard Time +5:30, Irish Standard Time +1, Israel Standard Time +2
+-- MST = Malaysia Standard Time +8, Mountain Time Zone -7, +06:30
+-- PST = Pacific Standard Time -8, Pakistan Standard Time +5, Philippine Standard Time +8
 local known_tzs = {
    ACDT='+10:30', ACST='+09:30', ACT ='+08:00', ADT  ='-03:00', AEDT ='+11:00',
    AEST='+10:00', AFT ='+04:30', AKDT='-08:00', AKST ='-09:00', AMST ='+05:00',
-   AMT ='+04:00', ART ='-03:00', AST ='+03:00', AST  ='+04:00', AST  ='+03:00',
+   AMT ='+04:00', ART ='-03:00', 
    AST ='-04:00', AWDT='+09:00', AWST='+08:00', AZOST='-01:00', AZT  ='+04:00',
    BDT ='+08:00', BIOT='+06:00', BIT ='-12:00', BOT  ='-04:00', BRT  ='-03:00',
-   BST ='+06:00', BST ='+01:00', BTT ='+06:00', CAT  ='+02:00', CCT  ='+06:30',
+   BST ='+01:00', BTT ='+06:00', CAT  ='+02:00', CCT  ='+06:30',
    CDT ='-05:00', CEDT='+02:00', CEST='+02:00', CET  ='+01:00', CHAST='+12:45',
    CIST='-08:00', CKT ='-10:00', CLST='-03:00', CLT  ='-04:00', COST ='-04:00',
-   COT ='-05:00', CST ='-06:00', CST ='+08:00', CVT  ='-01:00', CXT  ='+07:00',
+   COT ='-05:00', CST ='-06:00', CVT  ='-01:00', CXT  ='+07:00',
    CHST='+10:00', DFT ='+01:00', EAST='-06:00', EAT  ='+03:00', ECT  ='-04:00',
    ECT ='-05:00', EDT ='-04:00', EEDT='+03:00', EEST ='+03:00', EET  ='+02:00',
    EST ='-05:00', FJT ='+12:00', FKST='-03:00', FKT  ='-04:00', GALT ='-06:00',
    GET ='+04:00', GFT ='-03:00', GILT='+12:00', GIT  ='-09:00', GMT  ='+00:00',
    GST ='-02:00', GYT ='-04:00', HADT='-09:00', HAST ='-10:00', HKT  ='+08:00',
    HMT ='+05:00', HST ='-10:00', IRKT='+08:00', IRST ='+03:30', IST  ='+05:30',
-   IST ='+01:00', IST ='+02:00', JST ='+09:00', KRAT ='+07:00', KST  ='+09:00',
+   JST ='+09:00', KRAT ='+07:00', KST  ='+09:00',
    LHST='+10:30', LINT='+14:00', MAGT='+11:00', MDT  ='-06:00', MIT  ='-09:30',
-   MSD ='+04:00', MSK ='+03:00', MST ='+08:00', MST  ='-07:00', MST  ='+06:30',
+   MSD ='+04:00', MSK ='+03:00', MST ='+08:00',
    MUT ='+04:00', NDT ='-02:30', NFT ='+11:30', NPT  ='+05:45', NST  ='-03:30',
    NT  ='-03:30', OMST='+06:00', PDT ='-07:00', PETT ='+12:00', PHOT ='+13:00',
-   PKT ='+05:00', PST ='-08:00', PST ='+08:00', RET  ='+04:00', SAMT ='+04:00',
+   PKT ='+05:00', PST ='-08:00', RET  ='+04:00', SAMT ='+04:00',
    SAST='+02:00', SBT ='+11:00', SCT ='+04:00', SLT  ='+05:30', SST  ='-11:00',
    SST ='+08:00', TAHT='-10:00', THA ='+07:00', UTC  ='+00:00', UYST ='-02:00',
    UYT ='-03:00', VET ='-04:30', VLAT='+10:00', WAT  ='+01:00', WEDT ='+01:00',
-   WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00', MSK  ='+03:00',
+   WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00',
    -- US Millitary (for RFC-822)
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
 }
