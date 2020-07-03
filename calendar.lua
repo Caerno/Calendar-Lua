@@ -224,7 +224,7 @@ local function is(str)
 end
 
 local function init(num)
-	output = {}
+	local output = {}
 	for i=1,num do
 		table.insert(output, {["year"]="", ["month"]="", ["day"]=""})
 	end
@@ -247,7 +247,7 @@ local function inbord(val, down, up)
     end
 end
 
-function shallowcopy(orig)
+local function shallowcopy(orig)
     local orig_type = type(orig)
     local copy
     if orig_type == 'table' then
@@ -322,7 +322,7 @@ local function is_date ( date, is_julian )
 end	
 
 -- ХХХ к удалению - позволяет нулевой год ХХХ
-function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
+local function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
 	if not chain then return false
 	elseif (not type(chain) == "table")
 	or (not inbord(chain.year,-9999,9999))
@@ -370,87 +370,6 @@ local function guess_date( triplet, is_julian ) -- только для дат п
 	if is_date(date,is_julian) then return date end
 end
 
-local function partdist(status,date1,date2)
-	local mont, dist = 0, 0
-	local d1d, d1m, d2d, d2m = date1["day"], date1["month"], date2["day"], date2["month"]
-	local d1de, d2de = month_end_day(d1m), month_end_day(d2m)
-	if not (number_in_range(d1m,1,12) and number_in_range(d2m,1,12)) then 
-		return status, math.huge
-	elseif not (number_in_range(d1d,1,d1de) and number_in_range(d2d,1,d2de)) then 
-		return status, math.huge
-	else
-		return status, (d1m == d2m and math.abs(d1d-d2d)) or ((d1d > d2d and (d1de - d1d + d2d)) or (d2de - d2d + d1d))
-	end
-end
-
--- from date1 to date2 in one year (beetwen jan-dec, dec-jan needed)
--- XXX          DELETE          XXX
-local function partdist_old(date1,date2)
-	local st, dist = partdist({},date1,date2)
-	return dist
-end
---[==[
-local function partdist_old(date1,date2)
-	local mont, dist = 0, 0
-	local d1d, d1m, d2d, d2m = (date1["day"] or ""), (date1["month"] or ""),(date2["day"] or ""), (date2["month"] or "")
-	if not (inbord(d1d,1,31) and inbord(d2d,1,31)) then return false end
-	-- нужна доп. проверка частичных дат на корректность
-	if (inbord(d1m,1,12) or inbord(d2m,1,12))
-	and (d1m == "" or d2m == "") then
-		mont = purif(date1["month"] or date2["month"])
-		d1m, d2m = mont, mont
-	end
---	mw.log("📏 day: " ..d1d .."->"..d2d.." month: ".. d1m.."->"..d2m )
-	if (inbord(d1m,1,12) and d1d <= monthd[d1m])
-	and (inbord(d2m,1,12) and d2d <= monthd[d2m])	then 
-		if d2m == d1m 
-		then dist = d2d - d1d
-		else dist = monthd[d1m] - d1d + d2d
-		end
-		return dist
-	else return math.huge
-	end
-end 
---]==]
-
-local function unwarp(tbl)
-	if not tbl then return ""
-	elseif type(tbl) ~= "table" then return tbl
-	elseif (tbl.day or tbl.month or tbl.year) then 
-		return (tbl.year or "¤").."•"..(tbl.month or "¤").."•"..(tbl.day or "¤")
-	else return (tbl[3] or "¤").."-"..(tbl[2] or "¤").."-"..(tbl[1] or "¤")
-	end
-end
-
-local function guess_jd(status, first_date, second_date)
---	if not is_date(first_date) or is_date(second_date) then
---		return status
---	end
-	local first_j_jd = jul2jd(first_date)
-	local first_g_jd = gri2jd(first_date)
-	local second_j_jd = jul2jd(second_date) 
-	local second_g_jd = gri2jd(second_date)
---	mw.log(first_j_jd,first_g_jd,second_j_jd,second_g_jd)
-	if not first_j_jd or not first_g_jd or not second_j_jd or not second_g_jd then
-		local status, difference = partdist(status,first_date,second_date)
-		status.category = "erroneous_parameters"
-		status.error.msg = "wrong_calculation"
-		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
-	elseif first_j_jd == second_g_jd then
-		first_date.jd, first_date.calendar = first_j_jd, "julian"
-		second_date.jd, second_date.calendar = second_g_jd, "gregorian"
-	elseif first_g_jd == second_j_jd then
-		first_date.jd, first_date.calendar = first_g_jd, "gregorian"
-		second_date.jd, second_date.calendar = second_j_jd, "julian"
-	else
-		local difference = math.min(math.abs(first_j_jd-second_g_jd),math.abs(first_g_jd-second_j_jd))
-		status.category = "erroneous_parameters"
-		status.error.msg = "wrong_calculation"
-		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
-	end
-	return status, first_date, second_date
-end
-
 -- функция для нормализации значений дат и перевода месяцев в числа
 local function numerize(str)
     if type(str) == "number" then
@@ -478,22 +397,6 @@ local function decode_triple(d,m,y)
 	if not year then year = numerize((m or ""):match("(%d+)")) end
 	local dateout = {["year"]=year, ["month"]=month, ["day"]=day}
 	return dateout
-end
-
-local function dmdist(d1,d2)
-	local p1,p2 = math.huge,math.huge
-	if not not partdist_old(d1,d2) then 
-		p1=partdist_old(d1,d2)
-	end
-	if not not partdist_old(d2,d1) then 
-		p1=partdist_old(d2,d1)
-	end
---	if (not p1) or (not p2) then
---		return  (p1 or "") .. (p2 or "")
---	else
---		mw.log("d1, d2 = " .. undate(d1) .. ", " .. undate(d2))
-		return math.min(tonumber(partdist_old(d1,d2)) or math.huge,tonumber(partdist(d2,d1)) or math.huge)
---	end
 end
 
 -- 30) Блок функций для обработки ввода-вывода дат
@@ -673,7 +576,7 @@ end
 
 -- 40) Блок функций для перевода дат с использованием [[Юлианская дата]]
 -- конвертация григорианской даты в jd [[Julian day]]
-function gri2jd( datein )
+local function gri2jd( datein )
 	if not is_date(datein) then 
 --		if type(status.error) ~= "table" then
 --			status.error = {}
@@ -702,7 +605,7 @@ function gri2jd( datein )
 end
 
 -- конвертация jd в дату по юлианскому календарю
-function jd2jul( jd )
+local function jd2jul( jd )
 	if type(jd) ~= "number" then return error("Wrong jd") end
     -- calendar date calculation
     local c = jd + 32082
@@ -718,7 +621,7 @@ function jd2jul( jd )
 end
 
 -- конвертация даты по юлианскому календарю в jd
-function jul2jd( datein )
+local function jul2jd( datein )
 	if not is_date(datein,true) then 
 --		if type(status.error) ~= "table" then
 --			status.error = {}
@@ -747,7 +650,7 @@ function jul2jd( datein )
 end
 
 -- конвертация jd в григорианскую дату
-function jd2gri( jd )
+local function jd2gri( jd )
     -- calendar date calculation
     local a = jd + 32044
     local b = math.floor((4*a + 3) / 146097)
@@ -764,7 +667,7 @@ function jd2gri( jd )
 end
 
 -- для записи типа -100 год = 100 год до н.э. (с разрывом в нуле)
-function astroyear(status, num, bc)
+local function astroyear(status, num, bc)
 	local year
 	if not num or type(num) ~= "number" then 
 		status.error.msg = "tech_error"
@@ -781,7 +684,7 @@ end
 
 -- старая версия, несовместимая с форматом ВикиДаты днэ
 -- 4713 до н. э. = −4712 г.
-function astroyear_old(num, bc)
+local function astroyear_old(num, bc)
 	if not num then return error()
 	elseif type(num) ~= "number" then return error()
 	end
@@ -801,7 +704,7 @@ local function recalc_old(datein,calend)
    	end
 end
 
-function recalc(status,date,cal)
+local function recalc(status,date,cal)
 	if is_in_list(cal,calendars[1]) then 
 		date.jd, date.calendar = gri2jd(date), "gregorian"
 		status.processed, status.second_date, status.dates = true, true, 2
@@ -815,6 +718,103 @@ function recalc(status,date,cal)
 		status.error.params = cal
 		return status
 	end
+end
+
+local function partdist(status,date1,date2)
+	local mont, dist = 0, 0
+	local d1d, d1m, d2d, d2m = date1["day"], date1["month"], date2["day"], date2["month"]
+	local d1de, d2de = month_end_day(d1m), month_end_day(d2m)
+	if not (number_in_range(d1m,1,12) and number_in_range(d2m,1,12)) then 
+		return status, math.huge
+	elseif not (number_in_range(d1d,1,d1de) and number_in_range(d2d,1,d2de)) then 
+		return status, math.huge
+	else
+		return status, (d1m == d2m and math.abs(d1d-d2d)) or ((d1d > d2d and (d1de - d1d + d2d)) or (d2de - d2d + d1d))
+	end
+end
+
+-- from date1 to date2 in one year (beetwen jan-dec, dec-jan needed)
+-- XXX          DELETE          XXX
+local function partdist_old(date1,date2)
+	local st, dist = partdist({},date1,date2)
+	return dist
+end
+--[==[
+local function partdist_old(date1,date2)
+	local mont, dist = 0, 0
+	local d1d, d1m, d2d, d2m = (date1["day"] or ""), (date1["month"] or ""),(date2["day"] or ""), (date2["month"] or "")
+	if not (inbord(d1d,1,31) and inbord(d2d,1,31)) then return false end
+	-- нужна доп. проверка частичных дат на корректность
+	if (inbord(d1m,1,12) or inbord(d2m,1,12))
+	and (d1m == "" or d2m == "") then
+		mont = purif(date1["month"] or date2["month"])
+		d1m, d2m = mont, mont
+	end
+--	mw.log("📏 day: " ..d1d .."->"..d2d.." month: ".. d1m.."->"..d2m )
+	if (inbord(d1m,1,12) and d1d <= monthd[d1m])
+	and (inbord(d2m,1,12) and d2d <= monthd[d2m])	then 
+		if d2m == d1m 
+		then dist = d2d - d1d
+		else dist = monthd[d1m] - d1d + d2d
+		end
+		return dist
+	else return math.huge
+	end
+end 
+--]==]
+
+local function dmdist(d1,d2)
+	local p1,p2 = math.huge,math.huge
+	if not not partdist_old(d1,d2) then 
+		p1=partdist_old(d1,d2)
+	end
+	if not not partdist_old(d2,d1) then 
+		p1=partdist_old(d2,d1)
+	end
+--	if (not p1) or (not p2) then
+--		return  (p1 or "") .. (p2 or "")
+--	else
+--		mw.log("d1, d2 = " .. undate(d1) .. ", " .. undate(d2))
+		return math.min(tonumber(partdist_old(d1,d2)) or math.huge,tonumber(partdist(d2,d1)) or math.huge)
+--	end
+end
+
+local function unwarp(tbl)
+	if not tbl then return ""
+	elseif type(tbl) ~= "table" then return tbl
+	elseif (tbl.day or tbl.month or tbl.year) then 
+		return (tbl.year or "¤").."•"..(tbl.month or "¤").."•"..(tbl.day or "¤")
+	else return (tbl[3] or "¤").."-"..(tbl[2] or "¤").."-"..(tbl[1] or "¤")
+	end
+end
+
+local function guess_jd(status, first_date, second_date)
+--	if not is_date(first_date) or is_date(second_date) then
+--		return status
+--	end
+	local first_j_jd = jul2jd(first_date)
+	local first_g_jd = gri2jd(first_date)
+	local second_j_jd = jul2jd(second_date) 
+	local second_g_jd = gri2jd(second_date)
+--	mw.log(first_j_jd,first_g_jd,second_j_jd,second_g_jd)
+	if not first_j_jd or not first_g_jd or not second_j_jd or not second_g_jd then
+		local status, difference = partdist(status,first_date,second_date)
+		status.category = "erroneous_parameters"
+		status.error.msg = "wrong_calculation"
+		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
+	elseif first_j_jd == second_g_jd then
+		first_date.jd, first_date.calendar = first_j_jd, "julian"
+		second_date.jd, second_date.calendar = second_g_jd, "gregorian"
+	elseif first_g_jd == second_j_jd then
+		first_date.jd, first_date.calendar = first_g_jd, "gregorian"
+		second_date.jd, second_date.calendar = second_j_jd, "julian"
+	else
+		local difference = math.min(math.abs(first_j_jd-second_g_jd),math.abs(first_g_jd-second_j_jd))
+		status.category = "erroneous_parameters"
+		status.error.msg = "wrong_calculation"
+		status.error.params = {unwarp(first_date),unwarp(second_date),difference}
+	end
+	return status, first_date, second_date
 end
 
 -- 50) Функции для обработки UTC
@@ -955,7 +955,7 @@ local function mix_data(status,first_date,second_date)
 end
 
 -- в соответствии с таблицами принимаемых аргументов обрабатывает ввод
-function read_args(status, input)
+local function read_args(status, input)
 	if not status or type(status) ~= "table" then
 		status = {}
 		status.error = {}
@@ -1225,7 +1225,7 @@ function p.NewDate( frame )
 	year = astroyear(purif(year),bc)
 	local datein = {["year"]=purif(year), ["month"]=purif(month), ["day"]=purif(day)}
 
-	jdate, gdate = recalc_old(datein,cal)
+	local jdate, gdate = recalc_old(datein,cal)
 
     local yearmark = "года"
     local ym = args["yearmark"] or ""
