@@ -1,8 +1,8 @@
 local p = {}
 -- Необходимые модули и переменные
 
-local getArgs = require('Module:Arguments').getArgs
-
+-- local getArgs = require('Module:Arguments').getArgs
+-- local yesno = require('Module:Yesno')
 local err = "―" -- NthDay nil result
 
 -- 00) Блок многократно используемых списков
@@ -216,7 +216,6 @@ local function purif(str)
     -- need .5 -- ,5 number format converter?
 end
 
-local yesno = require('Module:Yesno')
 local function is(str)
 	if (not str) or (str == "") then return false
     else return yesno(str,false) 
@@ -1347,23 +1346,6 @@ function p.NewerDate( frame )
 	end
 end
 
---[[
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"15","августа"," ","2"," "," ",["cal"]="g",["wdm2"]=1,["wy2"]=1}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"15","августа",nil,"2",["cal"]="g",["wdm2"]=1,["wy2"]=1}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"32.1.2020",["cal"]="j"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23.12.1855",["cal"]="j",["wy2"]=1,["wdm2"]=1}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["wy"]=1,["wdm"]=1,["ny2"]=1,["sq_brts"]=1,["ym1"]="г."}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["sq_brts"]=true}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="g",["bc"]=1,["wy"]=1,["br_in"]=1,["wdm2"]=1,["ny1"]=1,}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"+2017-10-09T00:00:00Z",["cal"]="j"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"30","апреля",nil,"17"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"30","апреля","2020","17"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"31","апреля","2020"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23 juin 2020"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23 октября 2020"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"23.10.2020",cal="г"}})
-=p.Test(mw.getCurrentFrame():newChild{title="smth",args={"2020-10-23",cal="ю"}})
-]]--
 function p.Test( frame )
 	-- инициализация, заполнение обратных таблиц, копирование параметров
 	filling_months(lang, month_lang)
