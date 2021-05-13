@@ -1,4 +1,5 @@
 == Функции ==
+Находится в бета-версии ({{PAGESIZE:Модуль:Calendar}} байт). Об ошибках просьба сообщать на страницу обсуждения шаблона или самого модуля, или {{u|Carn}}. Если вы хотите поэкспериментировать, лучше делать это в [[Модуль:Песочница/Carn/Calendar|альфа-версии]] ({{PAGESIZE:Модуль:Песочница/Carn/Calendar}} байт).
 
 === NthDay ===
 {{tl|ДатыСтрокой}}, {{tl|Даты}}
@@ -45,8 +46,24 @@
 ** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}
 ** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}
 === ToIso ===
-* Получает дату в формате ДД.ММ.ГГГГ и выдаёт дату в формате ГГГГ-ММ-ДД
+* Получает полную дату дату в форматах с четырёхзначным годом и выдаёт дату в формате ГГГГ-ММ-ДД
 ** 1.2.1602 =<code><nowiki>{{#invoke:Calendar|ToIso|1.2.1602}}</nowiki></code>= {{#invoke:Calendar|ToIso|1.2.1602}}
+** -2020-12-12 =<code><nowiki>{{#invoke:Calendar|ToIso|-2020-12-12}}</nowiki></code>= {{#invoke:Calendar|ToIso|-2020-12-12}}
+** 5 января 1002 =<code><nowiki>{{#invoke:Calendar|ToIso|5 января 1002}}</nowiki></code>= {{#invoke:Calendar|ToIso|5 января 1002}}
+
+=== BoxDate ===
+* Получает дату с четырёхзначным годом, месяцем и опционально днём месяца, выдаёт читаемую
+** 06.1280 =<code><nowiki>{{#invoke:Calendar|BoxDate|06.1280}}</nowiki></code>= {{#invoke:Calendar|BoxDate|06.1280}}
+** 1820-07 =<code><nowiki>{{#invoke:Calendar|BoxDate|1820-07}}</nowiki></code>= {{#invoke:Calendar|BoxDate|1820-07}}
+** 08.08.1828 =<code><nowiki>{{#invoke:Calendar|BoxDate|08.08.1828}}</nowiki></code>= {{#invoke:Calendar|BoxDate|08.08.1828}}
+** July 12, 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|Jule 12, 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|July 12, 2020}}
+** 12 July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|12 Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|12 July 2020}}
+** July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|July 2020}}
+;bxDate
+Реализует указанные выше функции для вызова из других модулей, todo:
+* поддержка отрицательных лет (запоминание знака, обработка в положительном виде, приделывание "до н.э." в конце; 0000-01-01 невалидно)
+* преобразование даты в ISO формат, получение строки форматирования и преобразование по ней (необходимы доп.проверки для неточных дат)
+* отдавать параметры <code>errorText</code> и <code>errorCat</code>
 
 === ToDate ===
 * Получает дату в формате [[Википедия:Функции парсера##time]] и возвращает в формате <число> <месяц в родительном падеже> <год>
