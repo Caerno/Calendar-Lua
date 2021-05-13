@@ -2,8 +2,9 @@ local p = {}
 -- Необходимые модули и переменные
 local getArgs = require('Module:Arguments').getArgs
 local yesno = require('Module:Yesno')
-local lang = mw.getContentLanguage()
+local mwlang = mw.getContentLanguage()
 local err = "―" -- NthDay nil result
+local tCon = table.concat
 
 -- 00) Блок многократно используемых списков
 local bool_to_number={ [true]=1, [false]=0 }
@@ -13,8 +14,9 @@ local month_to_num = {["января"]=1,["февраля"]=2,["марта"]=3,[
 local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 local params = { {"г", "g"}, {"ю", "j"}}
 local comment = { '<span style="border-bottom: 1px dotted; cursor: help" title="по юлианскому календарю">','</span>'}
-local category = {["params"]="<!--[[Категория:Модуль:calendar:Страницы с некорректными параметрами]]-->"}
 
+-- duplicates:
+-- AST, BST, CST, ECT, IST, MST, PST, SST, 
 local known_tzs = {
    ACDT='+10:30', ACST='+09:30', ACT ='+08:00', ADT  ='-03:00', AEDT ='+11:00',
    AEST='+10:00', AFT ='+04:30', AKDT='-08:00', AKST ='-09:00', AMST ='+05:00',
@@ -40,10 +42,39 @@ local known_tzs = {
    SAST='+02:00', SBT ='+11:00', SCT ='+04:00', SLT  ='+05:30', SST  ='-11:00',
    SST ='+08:00', TAHT='-10:00', THA ='+07:00', UTC  ='+00:00', UYST ='-02:00',
    UYT ='-03:00', VET ='-04:30', VLAT='+10:00', WAT  ='+01:00', WEDT ='+01:00',
-   WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00', MSK  ='+03:00',
+   WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00',
    -- US Millitary (for RFC-822)
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
 }
+
+local category = {
+	["no_parameters"]=
+	"<!--[[Категория:Модуль:Calendar:Страницы без параметров]]-->",
+	["incomplete_parameters"]=
+	"<!--[[Категория:Модуль:Calendar:Страницы с неполными или некорректными параметрами]]-->",
+	["without_verification"]=
+	"<!--[[Категория:Модуль:Calendar:Страницы без проверки параметров]]-->",
+	["erroneous_parameters"]=
+	"<!--[[Категория:Модуль:Calendar:Страницы с ошибочными параметрами]]-->"
+}
+
+-- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
+local errors = {
+	["start"]="<span class=error>Ошибка: ",
+	["ending"]=".</span>",
+	["no_pattern_match"]="строка «%s» не совпадает с заданными паттернами",
+	["no_valid_date"]="дата «%s» не является корректной",
+	["wrong_jd"]="юлианская дата %s вне диапазона",
+	["no data"]="нет входящих данных",
+	["too_many_arguments"]="ожидается менее %i аргументов",
+	["too_little_arguments"]="ожидается более %i аргументов",
+	["wrong_calculation"]="даты %s и %s не прошли проверку, %s дней разница",
+	["unknown_param"]="параметр %s неизвестен",
+	["unknown_error"]="неизвестная ошибка",
+	["tech_error"]="ошибка в функции %s",
+
+--	[""]="",
+	}
 
 local tzs_names = {"ACDT","ACST","ACT","ADT","AEDT","AEST","AFT","AKDT","AKST",
 "AMST","AMT","ART","AST","AST","AST","AST","AWDT","AWST","AZOST","AZT","BDT",
@@ -131,7 +162,7 @@ local function is(str)
 end
 
 local function init(num)
-	output = {}
+	local output = {}
 	for i=1,num do
 		table.insert(output, {["year"]="", ["month"]="", ["day"]=""})
 	end
@@ -154,7 +185,7 @@ local function inbord(val, down, up)
     end
 end
 
-function shallowcopy(orig)
+local function shallowcopy(orig)
     local orig_type = type(orig)
     local copy
     if orig_type == 'table' then
@@ -182,7 +213,7 @@ local function unwarp(tbl)
 	if not tbl then return ""
 	elseif type(tbl) ~= "table" then return tbl
 	elseif (tbl.day or tbl.month or tbl.year) then
-		return "Y"..(tbl.year or "?").."•M"..(tbl.month or "?").."•D"..(tbl.day or "?")
+		return (tbl.year or "?").."-"..(tbl.month or "?").."-"..(tbl.day or "?")
 	else return (tbl[3] or "?").."-"..(tbl[2] or "?").."-"..(tbl[1] or "?")
 	end
 end
@@ -209,7 +240,7 @@ local function month_end_day (month,year,is_julian)
 	end
 end
 
-function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
+local function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
 	if not chain then return false
 	elseif (not type(chain) == "table")
 	or (not inbord(chain.year,-9999,9999))
@@ -324,9 +355,8 @@ local function parse_date(date_string)
 end
 ----[[ УСТАРЕЛО ]]----
 local numstr2date = function(numstr)
-	local lang = mw.getContentLanguage()
 	local format = "Y-m-d"
-	local iso_date = lang:formatDate(format,numstr)
+	local iso_date = mwlang:formatDate(format,numstr)
     local y,m,d = string.match(iso_date, "(%d+)-(%d+)-(%d+)")
 	local dateout = {["year"]=purif(y), ["month"]=purif(m), ["day"]=purif(d)}
     return dateout
@@ -346,8 +376,8 @@ end
 --    elseif inbord(nums[1],1,31) then
 --        dateout = {["year"]=nums[3], ["month"]=nums[2], ["day"]=nums[1]}
 --    else
---		local lang = mw.getContentLanguage()
---		implement lang:formatDate(format,datein,true) here
+--		local mwlang = mw.getContentLanguage()
+--		implement mwlang:formatDate(format,datein,true) here
 --        return error("Не распознано " .. numstr .. " как дата")
 --    end
 --    return dateout
@@ -361,10 +391,10 @@ local function year2lang(numyear,yearmark,wiki)
 	if numyear > 0 then	bcmark = ""
 	else numyear = 1 - numyear end
 	if wiki then 
---		output = table.concat({'[[', numyear,' год',bcmark,'|', numyear,']]', " ", yearmark, " ", bcmark})
-		output = table.concat({'[[', numyear,' год',bcmark,'|', trim(numyear .. " " .. yearmark .. " " .. bcmark), ']]'})
+--		output = tCon({'[[', numyear,' год',bcmark,'|', numyear,']]', " ", yearmark, " ", bcmark})
+		output = tCon({'[[', numyear,' год',bcmark,'|', trim(numyear .. " " .. yearmark .. " " .. bcmark), ']]'})
 	else
-		output = table.concat({numyear, " ", yearmark, bcmark})
+		output = tCon({numyear, " ", yearmark, bcmark})
 	end
 	return trim(output)
 end
@@ -372,19 +402,19 @@ end
 local function day2lang(datein,wikidate,wiki,inner_brt)
 --	if not isdate(wikidate) then wiki = false end
 	if not ispartdate(datein) then return "" end
-	local dm_separ, output = ""
+	local dm_separ, output = "", nil
 	if (not (not datein.day)) and (not (not datein.month)) then dm_separ = " " end
 	if (not datein.month) then datein.month = "" end
 	if (not datein.day) then datein.day = "" end
 	local monlan = monthlang[datein.month] or ""
 	if wiki and not inner_brt then
-		output = table.concat({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
+		output = tCon({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
 			"|", (datein.day or ""), dm_separ, monlan, "]]"})
 	elseif wiki then
-		output = table.concat({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
+		output = tCon({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
 			"|", (datein.day or ""), dm_separ, monlan})
 	else
-		output = table.concat({datein.day, dm_separ, monlan})
+		output = tCon({datein.day, dm_separ, monlan})
 	end
     return trim(output)
 end
@@ -397,15 +427,15 @@ local function triple_txt2date(d,m,y)
 	local month = purif(month_to_num[string.lower(mw.ustring.match((m or ""),"(%a+)"))])
 	local day = purif((d or "-"):match("(%d+)"))
 	if not month then 
-		msg = category["params"]
+		msg = category.incomplete_parameters
 		month = purif(month_to_num[string.lower(mw.ustring.match((d or ""),"(%a+)") or "-")]) 
 	end
 	if (not day) and ((purif(string.match(m or "","(%d+)") or "") or 32) <= (monthd[month] or 31)) then 
-		msg = category["params"]
+		msg = category.incomplete_parameters
 		day = purif(m:match("(%d+)") or "") 
 	end
 	if not year then 
-		msg = category["params"]
+		msg = category.incomplete_parameters
 		year = purif(string.match(m or "","(%d+)") or "") 
 	end
 	local dateout = {["year"]=year, ["month"]=month, ["day"]=day, ["msg"]=msg}
@@ -414,7 +444,7 @@ end
 
 local function glue(d1,m1,y1,d2,m2,y2)
 	if (not d1) and (not m1) and (not y1) and (not d2) and (not m2) and (not y2) then
-		return category["params"] end
+		return category.incomplete_parameters end
 	local gd,gm,gy,jd,jm,jy = 
 		(d1 or ""),
 		(m1 or ""),
@@ -422,12 +452,12 @@ local function glue(d1,m1,y1,d2,m2,y2)
 		(d2 or ""),
 		(m2 or ""),
 		(y2 or "")
-	--mw.log(table.concat({gd,gm,gy,jd,jm,jy}))
+	--mw.log(tCon({gd,gm,gy,jd,jm,jy}))
 	local gm_sep = {" [["," год|","]]"}
 	if (not gy) or (gy == "") then gm_sep = {"","",""} end
-	return table.concat({comment[1],trim(trim(jd .. " " .. jm) .. " " .. jy ),
+	return tCon({comment[1],trim(trim(jd .. " " .. jm) .. " " .. jy ),
 		comment[2]," ([[",trim(gd .. " " .. gm),"]]",gm_sep[1],(gy:match("(%d+)") or ""),
-		gm_sep[2],gy,gm_sep[3],")",category["params"]})
+		gm_sep[2],gy,gm_sep[3],")",category.incomplete_parameters})
 end
 
 -- добавить отображение без года
@@ -447,25 +477,25 @@ local function double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 	elseif (not isdate(gdate)) then return error((gdate.day or "") .. "." .. (gdate.month or "") .."." .. (gdate.year or "") .. " неподходящая дата") end
 	if jd.year == gd.year then
 		cd.year = gd.year
-		gd.year, jd.year = nil
+		gd.year, jd.year = nil, nil
 	end
 	if jd.month == gd.month then
 		cd.month = gd.month
-		gd.month, jd.month = nil
+		gd.month, jd.month = nil, nil
 	end	
 	if (not not cd.month) and wm then 
-		return table.concat({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
+		return tCon({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
 		trim(left .. day2lang(gd,gdate,wd,wm) .. " " .. year2lang(gd.year,yearmark,wy)) .. right, 
 		day2lang(cd,gdate,false) .. "]]", trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
 	end 
-	return table.concat({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
+	return tCon({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
 		trim(left .. day2lang(gd,gdate,wd) .. " " .. year2lang(gd.year,yearmark,wy)) .. right, 
 		trim(day2lang(cd,gdate,false)), trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
 end
 
 -- 40) Блок функций для перевода дат с использованием [[Юлианская дата]]
 
-function gri2jd( datein )
+local function gri2jd( datein )
 	if not isdate(datein) then return error((datein.day or "") .. "." .. (datein.month or "") .."." .. (datein.year or "") .. " неподходящая дата") end
     local year = datein.year
     local month = datein.month
@@ -484,7 +514,7 @@ function gri2jd( datein )
 	return jd
 end
 
-function jd2jul( jd )
+local function jd2jul( jd )
 	if type(jd) ~= "number" then return error("Промежуточная переменная " .. (jd or "") .. " не является числом") end
     -- calendar date calculation
     local c = jd + 32082
@@ -499,7 +529,7 @@ function jd2jul( jd )
     return dateout
 end
 
-function jul2jd( datein )
+local function jul2jd( datein )
 	if not isdate(datein,true) then return error((datein.day or "") .. "." .. (datein.month or "") ..".".. (datein.year or "") .. " неподходящая дата") end
     local year = datein.year
     local month = datein.month
@@ -518,7 +548,7 @@ function jul2jd( datein )
 	return jd
 end
 
-function jd2gri( jd )
+local function jd2gri( jd )
 	if type(jd) ~= "number" then return error("Промежуточная переменная " .. (jd or "") .. " не является числом") end
     -- calendar date calculation
     local a = jd + 32044
@@ -535,7 +565,7 @@ function jd2gri( jd )
     return dateout
 end
 
-function astroyear(num, bc)
+local function astroyear(num, bc)
 	if not num then return error()
 	elseif type(num) ~= "number" then return error()
 	end
@@ -545,12 +575,12 @@ function astroyear(num, bc)
 	end
 end
 
-function recalc(datein,calend)
+local function recalc(datein,calend)
 	if inlist(calend,params[1]) then 
 		return jd2jul(gri2jd(datein)), datein
    	elseif inlist(calend,params[2]) then
 		return datein, jd2gri(jul2jd(datein))
-   	else error("Параметр " .. (calend or "") .. " не опознан, разрешённые: " .. table.concat(params[1]," ") .. " и " .. table.concat(params[2]," "))
+   	else error("Параметр " .. (calend or "") .. " не опознан, разрешённые: " .. tCon(params[1]," ") .. " и " .. tCon(params[2]," "))
    	end
 end
 
@@ -563,7 +593,7 @@ local function utc(str,margin)
 	local ending = "]]"
 	local cat = ""
 	local nums = {}
-	local hmarg, timedec = 0
+	local hmarg, timedec = 0, 0
 	local mmarg = "00"
 	local output = ""
 -- checking type of input
@@ -693,33 +723,65 @@ end
 function p.BoxDate( frame ) 
     local args = getArgs(frame, { frameOnly = true })
     local datein = args[1]
-    return p.bxDate( datein )
+    return (p.bxDate( datein ))
 end
 
-function p.bxDate( datein ) 
-	filling_months(lang, month_lang)
-    -- парсинг входящей даты по шаблону
-    local date = parse_date(datein)
-    if not (type(date.year) == 'number') then return ("<span class=error>Не удалось распознать год. Данные: " .. unwarp(date) .. "; " .. datein .. "</span>") end
-    if not (1 <= date.month and date.month <= 12) then return ("<span class=error>Не удалось распознать месяц. Данные: " .. unwarp(date).. "; " .. datein .. "</span>") end
-    if not date.day then
-    	return month_lang.ru_N[date.month] .. " " .. date.year
-    elseif not (1 <= date.day and date.day <= month_end_day(date.month,date.year)) then 
-        return ("<span class=error>Не удалось распознать день. Данные: " .. unwarp(date) .. "; " .. datein .. "</span>")
-    end
-    return table.concat({date.day,month_lang.ru_G[date.month],date.year}," ")
+function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
+	local txtDateOut, date, status = "", {}, {brk = false, errorCat = "", errorText = ""}
+	strFormat = strFormat or "j xg Y"
+	-- заглушка - таблица параметров на будущее
+	params = params or {}
+	if not txtDateIn then 
+		status.errorText = tCon(errors.start,errors.no_data,errors.ending)
+		status.errorCat = category.no_parameters
+		status.brk = true
+	else
+		-- заполнение служебных таблиц
+		filling_months(lang, month_lang)
+	end
+	if not status.brk then
+		-- парсинг входящей даты по шаблону
+		date = parse_date(txtDateIn)
+	    -- заменить сообщения об ошибках на списочные
+	    if not (type(date.year) == 'number') then 
+	    	status.errorText = tCon{
+		    	"<span class=error>Не удалось распознать год. Данные: ", unwarp(date), 
+		    	"; ", txtDateIn ,"</span>"}
+	    	status.errorCat = category.incomplete_parameters
+	    	status.brk = true
+	    end
+	    if not (1 <= date.month and date.month <= 12) then 
+	    	status.errorText = tCon{
+		    	"<span class=error>Не удалось распознать месяц. Данные: ", unwarp(date), 
+		    	"; ", txtDateIn, "</span>"} 
+	    	status.errorCat = category.incomplete_parameters
+	    	status.brk = true
+	    end
+	    if not date.day then
+	    	strFormat = trim(string.gsub(string.gsub(strFormat,"xg","F"),"[dDjlNwzW]",""))
+	    elseif not (1 <= date.day and date.day <= month_end_day(date.month,date.year)) then 
+	        status.errorText = tCon{"<span class=error>Не удалось распознать день. Данные: ",
+	        	unwarp(date), "; ", txtDateIn, "</span>"}
+	        status.errorCat = category.incomplete_parameters
+	    	status.brk = true
+	    end
+	end
+	if not status.brk then
+		txtDateOut = mwlang:formatDate(strFormat,tCon({date.year,date.month,date.day},"-"),true)
+	end
+    return txtDateOut, date, status
 end
 
 function p.ToDate( frame ) -- возможно неиспользуемая
     local args = getArgs(frame, { frameOnly = true })
-    local lang = mw.getContentLanguage()
+    local mwlang = mw.getContentLanguage()
     local datein = args[1]
     local format = "j xg Y"
     if not string.match(datein, "%p") then return datein
     elseif not args[2] then
     else format = args[2]
     end
-    return lang:formatDate(format,datein,true)
+    return mwlang:formatDate(format,datein,true)
 end
 
 -- =p.unitime(mw.getCurrentFrame():newChild{title="smth",args={"−1:30","1"}})
@@ -762,7 +824,7 @@ end
 function p.OldDate( frame )
     local args = getArgs(frame, { frameOnly = true })
     if not args[1] then return err end
-    local gdate, jdate = {}
+    local gdate, jdate = {}, {}
     local strin = args[1] 
     local cal = args[2]:lower() or "г"
     local bc = is(args["bc"])
@@ -817,7 +879,7 @@ function p.NewDate( frame )
 	year = astroyear(purif(year),bc)
 	local datein = {["year"]=purif(year), ["month"]=purif(month), ["day"]=purif(day)}
 
-	jdate, gdate = recalc(datein,cal)
+	local jdate, gdate = recalc(datein,cal)
 
     local yearmark = "года"
     local ym = args["yearmark"] or ""
@@ -935,7 +997,7 @@ function p.Test( frame )
 		mw.log("j2date " .. (undate(j2date ) or ""))
 		mw.log("g1date " .. (undate(g1date ) or ""))
 		mw.log("g2date " .. (undate(g2date ) or ""))
-		return err .. category["params"]
+		return err .. category.incomplete_parameters
 	end
 end
 
