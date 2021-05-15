@@ -59,13 +59,13 @@ local category = {
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
-local errors = {
+local e = {
 	["start"]="<span class=error>Ошибка: ",
 	["ending"]=".</span>",
 	["no_pattern_match"]="строка «%s» не совпадает с заданными паттернами",
 	["no_valid_date"]="дата «%s» не является корректной",
 	["wrong_jd"]="юлианская дата %s вне диапазона",
-	["no data"]="нет входящих данных",
+	["no_data"]="нет входящих данных",
 	["too_many_arguments"]="ожидается менее %i аргументов",
 	["too_little_arguments"]="ожидается более %i аргументов",
 	["wrong_calculation"]="даты %s и %s не прошли проверку, %s дней разница",
@@ -732,7 +732,7 @@ function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
 	-- заглушка - таблица параметров на будущее
 	params = params or {}
 	if not txtDateIn then 
-		status.errorText = tCon(errors.start,errors.no_data,errors.ending)
+		status.errorText = tCon(e.start,e.no_data,e.ending)
 		status.errorCat = category.no_parameters
 		status.brk = true
 	else
@@ -744,24 +744,19 @@ function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
 		date = parse_date(txtDateIn)
 	    -- заменить сообщения об ошибках на списочные
 	    if not (type(date.year) == 'number') then 
-	    	status.errorText = tCon{
-		    	"<span class=error>Не удалось распознать год. Данные: ", unwarp(date), 
-		    	"; ", txtDateIn ,"</span>"}
+	    	status.errorText = tCon{e.start,string.format(e.no_pattern_match,txtDateIn),"; ",string.format(e.no_valid_date,unwarp(date)),e.ending}
 	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
-	    if not (1 <= date.month and date.month <= 12) then 
-	    	status.errorText = tCon{
-		    	"<span class=error>Не удалось распознать месяц. Данные: ", unwarp(date), 
-		    	"; ", txtDateIn, "</span>"} 
+	    if not inbord(date.month,1,12) then 
+	    	status.errorText = tCon{e.start,string.format(e.no_pattern_match,txtDateIn),"; ",string.format(e.no_valid_date,unwarp(date)),e.ending}
 	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	    if not date.day then
 	    	strFormat = trim(string.gsub(string.gsub(strFormat,"xg","F"),"[dDjlNwzW]",""))
-	    elseif not (1 <= date.day and date.day <= month_end_day(date.month,date.year)) then 
-	        status.errorText = tCon{"<span class=error>Не удалось распознать день. Данные: ",
-	        	unwarp(date), "; ", txtDateIn, "</span>"}
+	    elseif not inbord(date.day,1,month_end_day(date.month,date.year)) then 
+	        status.errorText = tCon{e.start,string.format(e.no_pattern_match,txtDateIn),"; ",string.format(e.no_valid_date,unwarp(date)),e.ending}
 	        status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
