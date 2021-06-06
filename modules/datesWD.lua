@@ -15,22 +15,24 @@ local function purif(str)
 end
 
 local function inbord(val, down, up)
-	if type(up) ~= "number" or type(down) ~= "number" or type(val) ~= "number" or up < down or val < down or val > up then
-		return false
-    else
-        return true
-    end
+	return not (type(up) ~= "number" or type(down) ~= "number" or type(val) ~= "number" or up < down or val < down or val > up)
 end
 
-local function isdate ( chain )
-	if (not type(chain) == "table")
+local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+local function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
+	if not chain then return false
+	elseif (not type(chain) == "table")
 	or (not inbord(chain.year,-9999,9999))
 	or (not inbord(chain.month,1,12))
 	or (not inbord(chain.day,1,31))
+	or chain.day > monthd[chain.month]
+--	or chain.year == 0
 	then return false
+	elseif chain.month == 2 and chain.day == 29 and not leap_year(chain.year,jul)
+		then return false
 	else return true end
---  more detailed check for 31.02.0000 needed
---  check for other calendars needed
+--  check for other calendars needed?
 end
 
 local function numstr2date(datein)
