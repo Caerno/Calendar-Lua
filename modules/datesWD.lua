@@ -3,6 +3,7 @@ local bool_to_number={ [true]=1, [false]=0 }
 local getArgs = require('Module:Arguments').getArgs
 local err = "-"
 
+-- utility functions
 local function purif(str)
     if str == "" or str == nil then
         return nil
@@ -14,11 +15,80 @@ local function purif(str)
     -- need .5 -- ,5 number format converter?
 end
 
-local function inbord(val, down, up)
+local function inbord(val, down, up) -- is val in border from down to up?
 	return not (type(up) ~= "number" or type(down) ~= "number" or type(val) ~= "number" or up < down or val < down or val > up)
 end
 
-local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+local inlist = function ( var, list )
+    local n = #list
+	local inlist = false
+	for i=1,n do
+		if var == list[i] then inlist = true end
+	end
+    return inlist
+end
+
+-- calendar functions
+local function unwarp(date) 
+	if not date then 
+		return ""
+	elseif type(date) ~= "table" then 
+		return date
+	end
+	return (date.year or "?").."-"..(date.month or "?").."-"..(date.day or "?")
+end
+
+local mnlang = {"en", "de", "fr"} --"ru_G", "ru_N", 
+
+--	["ru_G"] = {"января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"},
+--	["ru_N"] = {"январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"},
+local month_lang = { 
+	["en"] = {"january", "february", "march", "april", "may", "june","july", "august", "september", "october", "november", "december"},
+	["de"] = {"januar", "februar", "märz", "april", "mai", "juni","juli", "august", "september", "oktober", "november", "dezember"},
+	["fr"] = {"janvier", "février", "mars", "avril", "mai", "juin","juillet", "août", "septembre", "octobre", "novembre", "décembre"}
+	}
+local monthd = {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31} -- old table of days in mounth
+
+--	{"(%d%d)[-%.%s/\\](%d%d%d%d?)", ["order"] = {2,3} }, 	-- mm yyyy
+--	{"(%d%d%d%d?)[-%.%s/\\](%d%d)", ["order"] = {3,2} }, 	-- yyyy mm
+local pattern = { 
+	{"(-?%d%d%d%d?)[-%.%s/\\](%d%d)[-%.%s/\\](%d%d)",  	["order"] = {3,2,1} },  -- yyyy mm dd
+	{"(%d+)[-%.%s/\\](%d+)[-%.%s/\\](%d%d%d%d?)",	["order"] = {1,2,3} }, 		-- dd mm yyyy
+	{"(%d+)%s(%l+)%s(%d%d%d%d?)", 	["order"] = {1,2,3} }, 	-- d mmm y
+	{"(%l+)%s(%d+),?%s(%d%d%d%d?)", ["order"] = {2,1,3} }, 	-- mmm d, y
+	{"(%l+)%s(%d%d%d%d?)", 	["order"] = {2,3} }, 			-- mmm y
+	{"(%d%d%d%d?)%s(%l+)", 	["order"] = {3,2} }, 			-- y mmm
+}
+
+-- Will be filled automatically from above table
+local reverse_month_lang = {} 
+
+local reverse_table = function (strait_table)
+	local reversed_table = {}
+	for k,v in pairs(strait_table) do
+		reversed_table[v] = k
+	end
+	return reversed_table
+end
+
+local filling_months = function (mnlang, month_lang)
+	for i=1, #mnlang do
+		reverse_month_lang[mnlang[i]] = reverse_table(month_lang[mnlang[i]])
+	end
+end
+
+filling_months(mnlang, month_lang)
+
+local function leap_year(y,jul)
+	if (not y) or (type(y) ~= "number")
+		then return false
+	elseif (y % 4) ~= 0
+		then return false
+	elseif not jul and (y % 100 == 0 and y % 400 ~= 0)
+		then return false
+	else return true
+	end
+end
 
 local function isdate ( chain , jul ) -- можно использовать для проверки таблиц с полями day, month, year
 	if not chain then return false
@@ -35,6 +105,45 @@ local function isdate ( chain , jul ) -- можно использовать д�
 --  check for other calendars needed?
 end
 
+-- функция для нормализации значений дат и перевода месяцев в числа
+local function numerize(str)
+    if type(str) == "number" then
+        return math.floor(str)
+	elseif str == "" or str == nil or type(str) ~= "string" then
+		return nil
+    elseif type(tonumber(str)) == "number" then
+        return math.floor(tonumber(str))
+    else
+    	for i=1, #mnlang do
+    		if inlist(mw.ustring.lower(str),month_lang[mnlang[i]]) then
+				return reverse_month_lang[mnlang[i]][mw.ustring.lower(str)]
+			end
+    	end
+    end
+end
+
+local function parse_date(status, date_string)
+	status = status or {}
+	if type(date_string) ~= "string" or date_string == "" then return nil end
+	local out_date_str = {"","",""}
+	for i=1, #pattern do
+		local result_1, result_2, result_3 = mw.ustring.match(mw.ustring.lower(date_string),pattern[i][1])
+		if (result_1 or "") > "" then
+			status.pattern = i
+			out_date_str[pattern[i].order[1]] = result_1
+    		out_date_str[pattern[i].order[2]] = result_2
+    		if (pattern[i].order[3]) then out_date_str[pattern[i].order[3]] = result_3 end
+    		break
+		end
+	end
+	local date = {
+		["day"]  =numerize(out_date_str[1]),
+		["month"]=numerize(out_date_str[2]),
+		["year"] =numerize(out_date_str[3])}
+	return status, date
+end
+
+-- OLD FUNCTION
 local function numstr2date(datein)
 	local nums = {}
     local dateout = {}
@@ -61,7 +170,7 @@ local function date2str(datein)
     return dateout
 end
 
-function gri2jd( datein )
+local function gri2jd( datein )
 	if not isdate(datein) then return error("Wrong date") end
     local year = datein.year
     local month = datein.month
@@ -80,7 +189,7 @@ function gri2jd( datein )
 	return jd
 end
 
-function jd2jul( jd )
+local function jd2jul( jd )
 	if type(jd) ~= "number" then return error("Wrong jd") end
     -- calendar date calculation
     local c = jd + 32082
@@ -95,7 +204,7 @@ function jd2jul( jd )
     return dateout
 end
 
-function jul2jd( datein )
+local function jul2jd( datein )
 	if not isdate(datein) then return error("Wrong date") end
     local year = datein.year
     local month = datein.month
@@ -114,7 +223,7 @@ function jul2jd( datein )
 	return jd
 end
 
-function jd2gri( jd )
+local function jd2gri( jd )
     -- calendar date calculation
     local a = jd + 32044
     local b = math.floor((4*a + 3) / 146097)
@@ -174,22 +283,24 @@ function p.NthDay( frame )
     end
 end
 
+local function exam(smth,name)
+	name = name and mw.log(name) or ""
+	if type(smth) == 'table' then
+		mw.logObject(smth)
+		return smth
+	else
+		mw.log(smth)
+		return smth
+	end
+end
 -- =p.test(mw.getCurrentFrame():newChild{title="1",args={"1.1.2020"}}) 
-
+-- =p.test(mw.getCurrentFrame():newChild{title="1",args={"2020-01-01"}}) 
 function p.test(frame)
 	local args = getArgs(frame, { frameOnly = true })
-	local input = args[1]
-	if not input then
-		return ""
-	else
-		local datetest = numstr2date(input)
-		if isdate(datetest) then
-			strout = datetest.day .. "." .. datetest.month .. "." .. datetest.year .. " = " .. gri2jd(datetest)
-			return strout
-		else error("Not a date")
-		end
-	end
-	error("You shouldn't read this too")
+	local ns_sh_date, ns_year, os_sh_date = args[1],args[2],args[3]
+	local ns_date_string = (ns_sh_date or "") .. (ns_year and (" " .. ns_year) or "")
+	local status, ns_date = parse_date(nil,ns_date_string)
+	return unwarp(ns_date) .. " = " .. unwarp(jd2jul(gri2jd(ns_date)))
 end
 
 return p
