@@ -116,6 +116,7 @@ local function numerize(str)
     else
     	for i=1, #mnlang do
     		if inlist(mw.ustring.lower(str),month_lang[mnlang[i]]) then
+    			mnlang.curr = mnlang[i]
 				return reverse_month_lang[mnlang[i]][mw.ustring.lower(str)]
 			end
     	end
@@ -300,8 +301,11 @@ function p.test(frame)
 	local ns_sh_date, ns_year, os_sh_date = args[1],args[2],args[3]
 	local ns_date_string = (ns_sh_date or "") .. (ns_year and (" " .. ns_year) or "")
 	local status, ns_date = parse_date(nil,ns_date_string)
-    local in_order = pattern[status.pattern]["order"]
-	return unwarp(ns_date) .. " = " .. unwarp(jd2jul(gri2jd(ns_date)))
+	local os_date = jd2jul(gri2jd(ns_date))
+    local in_order = exam(pattern[status.pattern]["order"])
+    if in_order[1] > in_order[2] then
+    	return month_lang[mnlang.curr][ns_date.month] .. " " .. ns_date.day .. " [" .. os_mark
+	return unwarp(ns_date) .. " = " .. unwarp()
 end
 
 return p
