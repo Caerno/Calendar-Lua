@@ -300,6 +300,7 @@ function p.test(frame)
 	local ns_sh_date, ns_year, os_sh_date = args[1],args[2],args[3]
 	local ns_date_string = (ns_sh_date or "") .. (ns_year and (" " .. ns_year) or "")
 	local status, ns_date = parse_date(nil,ns_date_string)
+    local in_order = pattern[status.pattern]["order"]
 	return unwarp(ns_date) .. " = " .. unwarp(jd2jul(gri2jd(ns_date)))
 end
 
