@@ -33,5 +33,32 @@ end
 --]]
 -- runWD()
 
-print("f" > "Dd")
-print("Ff" < "d")
+--[[
+print(datesWD.test(args={""}))
+print(datesWD.test(3}))
+print(datesWD.test(false}))
+print(datesWD.test(true}))
+print(datesWD.test("1705-01-06"))
+print(datesWD.test("February 2","1905","January 20"))
+--]]
+
+local func1 = function(...)
+    return(...)
+end
+
+local a,b,c = "abc", "CBA", "1_%"
+print(a:byte(1), a:byte(2), a:byte(3))
+print(b:byte(1), b:byte(2), b:byte(3))
+print(c:byte(1), c:byte(2), c:byte(3))
+
+local x = c:byte(3) >> 1
+local y
+local z
+
+print()
+print()
+print()
+print()
+print()
+print()
+print(a,b,c)
