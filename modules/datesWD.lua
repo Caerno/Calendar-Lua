@@ -1,6 +1,7 @@
 local p = {}
 local bool_to_number={ [true]=1, [false]=0 }
-local getArgs = require('Module:Arguments').getArgs
+-- local getArgs = require('Module:Arguments').getArgs
+local snippet = require('snippet') -- pc-version
 local err = "-"
 
 -- utility functions
@@ -297,15 +298,39 @@ end
 -- =p.test(mw.getCurrentFrame():newChild{title="1",args={"1.1.2020"}}) 
 -- =p.test(mw.getCurrentFrame():newChild{title="1",args={"2020-01-01"}}) 
 function p.test(frame)
-	local args = getArgs(frame, { frameOnly = true })
+--	local args = getArgs(frame, { frameOnly = true })
+    local args = frame
+	args.sq_brts = true
 	local ns_sh_date, ns_year, os_sh_date = args[1],args[2],args[3]
 	local ns_date_string = (ns_sh_date or "") .. (ns_year and (" " .. ns_year) or "")
 	local status, ns_date = parse_date(nil,ns_date_string)
 	local os_date = jd2jul(gri2jd(ns_date))
-    local in_order = exam(pattern[status.pattern]["order"])
+    local in_order = pattern[status.pattern]["order"]
+    
+    local space =		snippet:dress{text = " ", a = 0, z = 0}
+	local empty =		snippet:dress{text = "", a = 0, z = 0}
+	local left =		snippet:dress{text = args.sq_brts and "&#091;" or "(", ["a"] = 3, ["z"] = 0}
+	local right =		snippet:dress{text = args.sq_brts and "&#093;" or ")", ["a"] = 0, ["z"] = 3}
+	local os_mark = 	snippet:dress{text = "[[Old Style and New Style dates|O.S.]]"}
+	local os_day =		snippet:dress{text = os_date.day}
+	local os_month =	snippet:dress{text = month_lang[mnlang.curr or "en"][os_date.month]}
+	local os_year =		snippet:dress{text = os_date.year}
+	local ns_day =		snippet:dress{text = ns_date.day}
+	local ns_month =	snippet:dress{text = month_lang[mnlang.curr or "en"][ns_date.month]}
+	local ns_year =		snippet:dress{text = ns_date.year}
+	local co_year =		empty
+	
+	if os_date.year == ns_date.year then
+		co_year = ns_year
+		ns_year = empty
+		os_year = empty
+	end
+	
     if in_order[1] > in_order[2] then
-    	return month_lang[mnlang.curr][ns_date.month] .. " " .. ns_date.day .. " [" .. os_mark
-	return unwarp(ns_date) .. " = " .. unwarp()
+    	return ns_month + ns_day + ns_year + left + os_mark + os_month + os_day + os_year + right + co_year
+    else
+    	return ns_day + ns_month + ns_year + left + os_mark + os_day + os_month + os_year + right + co_year
+    end
 end
 
 return p
