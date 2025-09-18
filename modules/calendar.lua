@@ -59,20 +59,20 @@ local category = {
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
-local errors = {
+local e = {
 	["start"]="<span class=error>Ошибка: ",
 	["ending"]=".</span>",
 	["no_pattern_match"]="строка «%s» не совпадает с заданными паттернами",
 	["no_valid_date"]="дата «%s» не является корректной",
 	["wrong_jd"]="юлианская дата %s вне диапазона",
-	["no data"]="нет входящих данных",
+	["no_data"]="нет входящих данных",
 	["too_many_arguments"]="ожидается менее %i аргументов",
 	["too_little_arguments"]="ожидается более %i аргументов",
 	["wrong_calculation"]="даты %s и %s не прошли проверку, %s дней разница",
 	["unknown_param"]="параметр %s неизвестен",
 	["unknown_error"]="неизвестная ошибка",
 	["tech_error"]="ошибка в функции %s",
-
+	["box_date"]="строка «%s» не является верной датой, пожалуйста, укажите дату в формате ГГГГ-ММ-ДД"
 --	[""]="",
 	}
 
@@ -104,7 +104,7 @@ local time_units = {"year","month","day"} --не используется
     "week", "month", "year", "year_of_century", "century"} ]]--
 -- напоминание чтобы сделать более точные пересчёты - с часами / расчёт длительностей периодов
 
-local lang = {"ru_G", "ru_N", "en", "de", "fr"}
+local mnlang = {"ru_G", "ru_N", "en", "en_S", "de", "fr"}
 local month_lang = {
 	["ru_G"] = {"января","февраля","марта","апреля","мая","июня",
 		"июля","августа","сентября","октября","ноября","декабря"},
@@ -112,6 +112,8 @@ local month_lang = {
 		"июль","август","сентябрь","октябрь","ноябрь","декабрь"},
 	["en"] = {"january", "february", "march", "april", "may", "june",
 		"july", "august", "september", "october", "november", "december"},
+	["en_S"] = {"jan", "feb", "mar", "apr", "may", "jun",
+		"jul", "aug", "sep", "oct", "nov", "dec"},
 	["de"] = {"januar", "februar", "märz", "april", "mai", "juni",
 		"juli", "august", "september", "oktober", "november", "dezember"},
 	["fr"] = {"janvier", "février", "mars", "avril", "mai", "juin",
@@ -131,9 +133,9 @@ local reverse_table = function (strait_table)
 end
 
 -- запуск цикла по заполнению обратных таблиц, необходимых для распознавания дат
-local filling_months = function (lang, month_lang)
-	for i=1, #lang do
-		reverse_month_lang[lang[i]] = reverse_table(month_lang[lang[i]])
+local filling_months = function (mnlang, month_lang)
+	for i=1, #mnlang do
+		reverse_month_lang[mnlang[i]] = reverse_table(month_lang[mnlang[i]])
 	end
 end
 
@@ -178,11 +180,7 @@ local function isyear(tbl)
 end
 
 local function inbord(val, down, up)
-	if type(up) ~= "number" or type(down) ~= "number" or type(val) ~= "number" or up < down or val < down or val > up then
-		return false
-    else
-        return true
-    end
+	return not (type(up) ~= "number" or type(down) ~= "number" or type(val) ~= "number" or up < down or val < down or val > up)
 end
 
 local function shallowcopy(orig)
@@ -324,9 +322,9 @@ local function numerize(str)
     elseif type(tonumber(str)) == "number" then
         return math.floor(tonumber(str))
     else
-    	for i=1, #lang do
-    		if inlist(mw.ustring.lower(str),month_lang[lang[i]]) then
-				return reverse_month_lang[lang[i]][mw.ustring.lower(str)]
+    	for i=1, #mnlang do
+    		if inlist(mw.ustring.lower(str),month_lang[mnlang[i]]) then
+				return reverse_month_lang[mnlang[i]][mw.ustring.lower(str)]
 			end
     	end
     end
@@ -695,7 +693,7 @@ function p.ToIso( frame )
     local args = getArgs(frame, { frameOnly = true })
     local datein = args[1]
     -- инициализация, заполнение обратных таблиц, копирование параметров
-	filling_months(lang, month_lang)
+	filling_months(mnlang, month_lang)
     -- парсинг входящей даты по шаблону
     local date = parse_date(datein)
     if not (type(date.year) == 'number') then 
@@ -722,8 +720,13 @@ end
 -- =p.BoxDate(mw.getCurrentFrame():newChild{title="smth",args={"11.2021"}})
 function p.BoxDate( frame ) 
     local args = getArgs(frame, { frameOnly = true })
-    local datein = args[1]
-    return (p.bxDate( datein ))
+    local txtDateIn, strFormat  = args[1], args[2]
+    local txtDateOut, date, status = p.bxDate(txtDateIn, strFormat, params)
+	if status.brk then
+		return error(status.errorText)
+	else
+		return txtDateOut
+	end
 end
 
 function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
@@ -732,37 +735,33 @@ function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
 	-- заглушка - таблица параметров на будущее
 	params = params or {}
 	if not txtDateIn then 
-		status.errorText = tCon(errors.start,errors.no_data,errors.ending)
+		status.errorText = e.no_data
 		status.errorCat = category.no_parameters
 		status.brk = true
 	else
 		-- заполнение служебных таблиц
-		filling_months(lang, month_lang)
+		filling_months(mnlang, month_lang)
 	end
 	if not status.brk then
 		-- парсинг входящей даты по шаблону
 		date = parse_date(txtDateIn)
 	    -- заменить сообщения об ошибках на списочные
-	    if not (type(date.year) == 'number') then 
-	    	status.errorText = tCon{
-		    	"<span class=error>Не удалось распознать год. Данные: ", unwarp(date), 
-		    	"; ", txtDateIn ,"</span>"}
+	    if not (date.year and type(date.year) == 'number') then 
+	    	status.errorText = string.format(e.box_date,txtDateIn)
 	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
-	    if not (1 <= date.month and date.month <= 12) then 
-	    	status.errorText = tCon{
-		    	"<span class=error>Не удалось распознать месяц. Данные: ", unwarp(date), 
-		    	"; ", txtDateIn, "</span>"} 
+	    if not inbord(date.month,1,12) then 
+	    	status.errorText = string.format(e.box_date,txtDateIn)
 	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
-	    if not date.day then
+	    if not date.day and string.find(strFormat,"[dDjlNwzW]") then
 	    	strFormat = trim(string.gsub(string.gsub(strFormat,"xg","F"),"[dDjlNwzW]",""))
-	    elseif not (1 <= date.day and date.day <= month_end_day(date.month,date.year)) then 
-	        status.errorText = tCon{"<span class=error>Не удалось распознать день. Данные: ",
-	        	unwarp(date), "; ", txtDateIn, "</span>"}
-	        status.errorCat = category.incomplete_parameters
+	    elseif not date.day then
+	    elseif not inbord(date.day,1,month_end_day(date.month,date.year)) then 
+	    	status.errorText = string.format(e.box_date,txtDateIn)
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	end
