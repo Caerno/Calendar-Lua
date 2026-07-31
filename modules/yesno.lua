@@ -1,4 +1,3 @@
--- 
 -- Function allowing for consistent treatment of boolean-like wikitext input.
 -- It works similarly to the template {{yesno}}.
 
@@ -16,6 +15,8 @@ return function (val, default)
 		or val == 't'
 		or val == 'да'
 		or val == 'д'
+		-- кириллица
+		or val == 'у'
         or val == '+'
 		or tonumber(val) == 1
 	then
