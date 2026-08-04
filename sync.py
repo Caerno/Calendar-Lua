@@ -72,6 +72,13 @@ class Wiki:
             raise
 
     def login(self):
+        env_file = os.path.expanduser("~/.config/wiki-sync.env")
+        if os.path.exists(env_file):
+            for line in open(env_file, encoding="utf-8"):
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, _, v = line.partition("=")
+                    os.environ.setdefault(k.strip(), v.strip().strip("'\""))
         user = os.environ.get("WSYNC_USER") or input("Логин (Имя@бот): ")
         pw = os.environ.get("WSYNC_PASS") or getpass.getpass("Бот-пароль: ")
         token = self.api(action="query", meta="tokens", type="login")["query"]["tokens"]["logintoken"]
