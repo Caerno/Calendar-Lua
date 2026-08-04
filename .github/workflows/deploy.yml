@@ -1,0 +1,23 @@
+name: deploy
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'файл из карты PAGES в sync.py'
+        required: true
+        default: 'modules/sandbox.lua'
+      summary:
+        description: 'комментарий правки'
+        required: true
+        default: 'обновление из репозитория'
+jobs:
+  push-to-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 sync.py push "$TARGET" -m "$SUMMARY"
+        env:
+          WSYNC_USER: ${{ secrets.WSYNC_USER }}
+          WSYNC_PASS: ${{ secrets.WSYNC_PASS }}
+          TARGET: ${{ inputs.file }}
+          SUMMARY: ${{ inputs.summary }}
