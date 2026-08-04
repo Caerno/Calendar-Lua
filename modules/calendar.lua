@@ -6,7 +6,7 @@ local mwlang = mw.getContentLanguage()
 local err = "―" -- NthDay nil result
 local tCon = table.concat
 
--- 00) Блок многократно используемых списков
+-- Блок многократно используемых списков
 local bool_to_number={ [true]=1, [false]=0 }
 local monthlang = {"января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"}
 local month_to_num = {["января"]=1,["февраля"]=2,["марта"]=3,["апреля"]=4,["мая"]=5,["июня"]=6,
@@ -76,18 +76,6 @@ local e = {
 --	[""]="",
 	}
 
-local tzs_names = {"ACDT","ACST","ACT","ADT","AEDT","AEST","AFT","AKDT","AKST",
-"AMST","AMT","ART","AST","AST","AST","AST","AWDT","AWST","AZOST","AZT","BDT",
-"BIOT","BIT","BOT","BRT","BST","BST","BTT","CAT","CCT","CDT","CEDT","CEST",
-"CET","CHAST","CIST","CKT","CLST","CLT","COST","COT","CST","CST","CVT","CXT",
-"CHST","DFT","EAST","EAT","ECT","ECT","EDT","EEDT","EEST","EET","EST","FJT",
-"FKST","FKT","GALT","GET","GFT","GILT","GIT","GMT","GST","GYT","HADT","HAST",
-"HKT","HMT","HST","IRKT","IRST","IST","IST","IST","JST","KRAT","KST","LHST",
-"LINT","MAGT","MDT","MIT","MSD","MSK","MST","MST","MST","MUT","NDT","NFT",
-"NPT","NST","NT","OMST","PDT","PETT","PHOT","PKT","PST","PST","RET","SAMT",
-"SAST","SBT","SCT","SLT","SST","SST","TAHT","THA","UTC","UYST","UYT","VET",
-"VLAT","WAT","WEDT","WEST","WET","YAKT","YEKT","Z","A","M","N","Y","MSK"}
-
 local pattern = { -- для распознавания дат, переданных одним строчным параметром
 	{"(-?%d%d%d%d?)[-%.%s/\\](%d%d)[-%.%s/\\](%d%d)",  	["order"] = {3,2,1} },  -- yyyy mm dd
 	{"(%d+)[-%.%s/\\](%d+)[-%.%s/\\](%d%d%d%d?)",	["order"] = {1,2,3} }, 		-- dd mm yyyy
@@ -139,7 +127,7 @@ local filling_months = function (mnlang, month_lang)
 	end
 end
 
--- 10) Блок общих функций
+-- Блок общих функций
 local function trim(str)
 	if not str then return nil
 	else return str:match'^()%s*$' and '' or str:match'^%s*(.*%S)'
@@ -206,7 +194,7 @@ local inlist = function ( var, list )
     return inlist
 end
 
--- 20) Блок общих проверочных функций, связанных с датами
+-- Блок общих проверочных функций, связанных с датами
 local function unwarp(tbl)
 	if not tbl then return ""
 	elseif type(tbl) ~= "table" then return tbl
@@ -305,7 +293,7 @@ local function dmdist(d1,d2)
 --	end
 end
 
--- 30) Блок функций для обработки ввода-вывода дат
+-- Блок функций для обработки ввода-вывода дат
 
 local function undate(tbl)
 	if not tbl then return ""
@@ -351,7 +339,7 @@ local function parse_date(date_string)
 		["year"] =numerize(out_date_str[3])}
 	return date --, error_data
 end
-----[[ УСТАРЕЛО ]]----
+-- DEPRECATED
 local numstr2date = function(numstr)
 	local format = "Y-m-d"
 	local iso_date = mwlang:formatDate(format,numstr)
@@ -491,7 +479,7 @@ local function double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 		trim(day2lang(cd,gdate,false)), trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
 end
 
--- 40) Блок функций для перевода дат с использованием [[Юлианская дата]]
+-- Блок функций для перевода дат с использованием [[Юлианская дата]]
 
 local function gri2jd( datein )
 	if not isdate(datein) then return error((datein.day or "") .. "." .. (datein.month or "") .."." .. (datein.year or "") .. " неподходящая дата") end
@@ -582,7 +570,7 @@ local function recalc(datein,calend)
    	end
 end
 
--- 50) Функции для обработки UTC
+-- Функции для обработки UTC
 
 local function utc(str,margin)
 	local d = 1
@@ -641,7 +629,7 @@ local function utc(str,margin)
 	return output
 end
 
--- 60) Блок функций ввода-вывода
+-- Блок функций ввода-вывода
 
 function p.NthDay( frame )
     local args = getArgs(frame, { frameOnly = true })
@@ -729,7 +717,7 @@ function p.BoxDate( frame )
 	end
 end
 
-function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
+function p.bxDate( txtDateIn , strFormat, params )
 	local txtDateOut, date, status = "", {}, {brk = false, errorCat = "", errorText = ""}
 	strFormat = strFormat or "j xg Y"
 	-- заглушка - таблица параметров на будущее
@@ -771,7 +759,7 @@ function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
     return txtDateOut, date, status
 end
 
-function p.ToDate( frame ) -- возможно неиспользуемая
+function p.ToDate( frame )
     local args = getArgs(frame, { frameOnly = true })
     local mwlang = mw.getContentLanguage()
     local datein = args[1]
@@ -793,7 +781,7 @@ function p.unitime( frame )
     local utcin = ""
     local input = args[1]
     if not input then return "" end
-    if inlist(input:upper(),tzs_names) then 
+    if known_tzs[input:upper()] then 
     	utcin = known_tzs[input:upper()] 
     elseif (string.sub(input:upper(),1,3) == 'UTC') and (string.len(input) < 10) then
     	utcin = string.sub(input,4)
@@ -818,7 +806,7 @@ function p.unitime( frame )
 end
 
 
--- УСТАРЕЛО
+-- DEPRECATED
 -- =p.OldDate(mw.getCurrentFrame():newChild{title="smth",args={"20.02.2020","ю",["bc"]="1",["wd"]="1",["wy"]="1",["sq_brts"]="1",["yearmark"]="г."}})
 function p.OldDate( frame )
     local args = getArgs(frame, { frameOnly = true })
@@ -998,6 +986,91 @@ function p.Test( frame )
 		mw.log("g2date " .. (undate(g2date ) or ""))
 		return err .. category.incomplete_parameters
 	end
+end
+
+
+-- Блок реестра календарей и вывода дат по разным календарям
+
+-- "ГГГГ-ММ-ДД" → таблица {year, month, day}
+local function iso2date(iso)
+	local y, m, d = string.match(iso or "", "^(-?%d+)-(%d%d?)-(%d%d?)$")
+	return {["year"]=purif(y), ["month"]=purif(m), ["day"]=purif(d)}
+end
+
+-- Коптский календарь: арифметика через JD. Эпоха 1.1.1 = JD 1825030
+-- (29 августа 284 года по юлианскому). Високосный год: y mod 4 == 3.
+local function coptic2jd(y, m, d)
+	return 1825029 + 365*(y-1) + math.floor(y/4) + 30*(m-1) + d
+end
+
+local function jd2coptic(jd)
+	local year = math.floor((4*(jd - 1825030) + 1463)/1461)
+	local month = math.floor((jd - coptic2jd(year, 1, 1))/30) + 1
+	local day = jd - coptic2jd(year, month, 1) + 1
+	return {["year"]=year, ["month"]=month, ["day"]=day}
+end
+
+-- Реестр календарей. Два вида записей:
+--   fmt  = календарь умеет сам движок MediaWiki (коды x* в formatDate);
+--   conv = своя математика: функция JD → таблица {year, month, day}.
+-- Новый календарь = одна строка (fmt) либо строка + пара функций x2jd/jd2x.
+local calreg = {
+	{["id"]="григорианский",	["name"]="[[Григорианский календарь|Григорианский]]",	["fmt"]="j xg Y"},
+	{["id"]="юлианский",		["name"]="[[Юлианский календарь|Юлианский]]",			["conv"]=jd2jul},
+	{["id"]="исламский",		["name"]="[[Исламский календарь|Исламский (хиджра)]]",	["fmt"]="xmj xmF xmY"},
+	{["id"]="иранский",		["name"]="[[Иранский календарь|Иранский (солнечная хиджра)]]",	["fmt"]="xij xiF xiY"},
+	{["id"]="еврейский",		["name"]="[[Еврейский календарь|Еврейский]]",			["fmt"]="xjj xjF xjY"},
+	{["id"]="тайский",		["name"]="[[Тайский солнечный календарь|Тайский солнечный]]",	["fmt"]="j xg xkY"},
+	{["id"]="миньго",		["name"]="[[Миньго|Миньго]]",							["fmt"]="j xg xoY"},
+	{["id"]="нэнго",			["name"]="[[Японское летосчисление|Японский (нэнго)]]",	["fmt"]="j xg (xtY)"},
+	{["id"]="коптский",		["name"]="[[Коптский календарь|Коптский]]",				["conv"]=jd2coptic},
+}
+
+local function cal_render(entry, iso, jd)
+	if entry.fmt then
+		return mwlang:formatDate(entry.fmt, iso)
+	end
+	local d = entry.conv(jd)
+	return tCon({d.day, ".", string.format("%02d", d.month), ".", d.year})
+end
+
+-- {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|еврейский}} → 13 Ав 5786
+-- Первый аргумент пустой = сегодня (по UTC).
+function p.CalDate(frame)
+	local args = getArgs(frame, { frameOnly = true })
+	local iso = trim(args[1] or "")
+	if iso == "" then iso = mwlang:formatDate("Y-m-d") end
+	local date = iso2date(iso)
+	if not isdate(date) then
+		return e.start .. string.format(e.box_date, iso) .. e.ending
+	end
+	local id = trim(args[2] or "")
+	for i = 1, #calreg do
+		if calreg[i].id == id then
+			return cal_render(calreg[i], iso, gri2jd(date))
+		end
+	end
+	return e.start .. string.format(e.unknown_param, id) .. e.ending
+end
+
+-- Дашборд: {{#invoke:Песочница/Carn/Calendar|Today}} → таблица «сегодня по всем
+-- календарям реестра». Необязательный аргумент — фиксированная дата для тестов.
+function p.Today(frame)
+	local args = getArgs(frame, { frameOnly = true })
+	local iso = trim(args[1] or "")
+	if iso == "" then iso = mwlang:formatDate("Y-m-d") end
+	local date = iso2date(iso)
+	if not isdate(date) then
+		return e.start .. string.format(e.box_date, iso) .. e.ending
+	end
+	local jd = gri2jd(date)
+	local rows = {'{| class="wikitable sortable"', '! Календарь !! Дата'}
+	for i = 1, #calreg do
+		table.insert(rows, '|-')
+		table.insert(rows, '| ' .. calreg[i].name .. ' || ' .. cal_render(calreg[i], iso, jd))
+	end
+	table.insert(rows, '|}')
+	return tCon(rows, "\n")
 end
 
 return p
