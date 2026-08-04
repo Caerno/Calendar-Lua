@@ -1,0 +1,64 @@
+Песочница [[Модуль:Calendar]] — точная копия боевого модуля плюс экспериментальный блок: реестр календарей и функции '''CalDate''' и '''Today'''. Старые функции (NthDay, unitime, OldDate, NewDate, ToIso, BoxDate, ToDate) не изменены, их описание — в [[Модуль:Calendar/doc|документации боевого модуля]].
+
+Прежнее содержимое этой песочницы (альфа-переделка 2021) сохранено в истории страницы и в репозитории [https://github.com/Caerno/Calendar-Lua Calendar-Lua] (файл carn-sandbox/Calendar-alpha-2021.lua); разработка ведётся в ветке calendars того же репозитория.
+
+== CalDate ==
+Дата в заданном календаре.
+* первый аргумент — дата по григорианскому календарю в формате ГГГГ-ММ-ДД; пустой или отсутствует — сегодня (по UTC);
+* второй аргумент — календарь: <code>григорианский</code>, <code>юлианский</code>, <code>исламский</code>, <code>иранский</code>, <code>еврейский</code>, <code>тайский</code>, <code>миньго</code>, <code>нэнго</code>, <code>коптский</code>.
+
+Проверка на фиксированной дате — столбцы «получено» и «ожидается» должны совпадать:
+{| class="wikitable"
+! Календарь !! Получено !! Ожидается
+|-
+| исламский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|исламский}} || 11 Сафар 1448
+|-
+| иранский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|иранский}} || 5 Мордад 1405
+|-
+| еврейский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|еврейский}} || 13 Ав 5786
+|-
+| тайский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|тайский}} || 27 июля 2569
+|-
+| миньго || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|миньго}} || 27 июля 115
+|-
+| нэнго || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|нэнго}} || 27 июля (令和8)
+|-
+| юлианский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|юлианский}} || 14.07.2026
+|-
+| коптский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|коптский}} || 20.11.1742
+|-
+| григорианский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|григорианский}} || 27 июля 2026
+|-
+| неизвестный календарь || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|марсианский}} || сообщение об ошибке
+|-
+| некорректная дата || {{#invoke:Песочница/Carn/Calendar|CalDate|мусор|еврейский}} || сообщение об ошибке
+|}
+
+Сегодня: <code><nowiki>{{#invoke:Песочница/Carn/Calendar|CalDate||еврейский}}</nowiki></code> = {{#invoke:Песочница/Carn/Calendar|CalDate||еврейский}}
+
+== Today ==
+Таблица «дата по всем календарям реестра». Без аргументов — сегодня; необязательный первый аргумент — фиксированная дата ГГГГ-ММ-ДД (для проверок).
+
+{{#invoke:Песочница/Carn/Calendar|Today}}
+
+== Регрессия против боевого модуля ==
+Старые функции не менялись — столбцы «боевой» и «песочница» обязаны совпадать посимвольно.
+{| class="wikitable"
+! Вызов !! Боевой !! Песочница
+|-
+| <code><nowiki>NthDay|1|0|10|2020|%Y-%m-%d</nowiki></code> || {{#invoke:Calendar|NthDay|1|0|10|2020|%Y-%m-%d}} || {{#invoke:Песочница/Carn/Calendar|NthDay|1|0|10|2020|%Y-%m-%d}}
+|-
+| <code><nowiki>NthDay|-1|5|2|2024|%Y-%m-%d</nowiki></code> || {{#invoke:Calendar|NthDay|-1|5|2|2024|%Y-%m-%d}} || {{#invoke:Песочница/Carn/Calendar|NthDay|-1|5|2|2024|%Y-%m-%d}}
+|-
+| <code><nowiki>NewDate|20.02.1917|ю|wd=1|wy=1</nowiki></code> || {{#invoke:Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}}
+|-
+| <code><nowiki>NewDate|2020-02-20|г|bc=1</nowiki></code> || {{#invoke:Calendar|NewDate|2020-02-20|г|bc=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|2020-02-20|г|bc=1}}
+|-
+| <code><nowiki>ToIso|12 декабря 2020</nowiki></code> || {{#invoke:Calendar|ToIso|12 декабря 2020}} || {{#invoke:Песочница/Carn/Calendar|ToIso|12 декабря 2020}}
+|-
+| <code><nowiki>BoxDate|06.1280|F Y года</nowiki></code> || {{#invoke:Calendar|BoxDate|06.1280|F Y года}} || {{#invoke:Песочница/Carn/Calendar|BoxDate|06.1280|F Y года}}
+|-
+| <code><nowiki>unitime|MSK</nowiki></code> || {{#invoke:Calendar|unitime|MSK}} || {{#invoke:Песочница/Carn/Calendar|unitime|MSK}}
+|-
+| <code><nowiki>unitime|+5:45|1</nowiki></code> || {{#invoke:Calendar|unitime|+5:45|1}} || {{#invoke:Песочница/Carn/Calendar|unitime|+5:45|1}}
+|}
