@@ -6,7 +6,7 @@ local mwlang = mw.getContentLanguage()
 local err = "―" -- NthDay nil result
 local tCon = table.concat
 
--- 00) Блок многократно используемых списков
+-- Блок многократно используемых списков
 local bool_to_number={ [true]=1, [false]=0 }
 local monthlang = {"января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"}
 local month_to_num = {["января"]=1,["февраля"]=2,["марта"]=3,["апреля"]=4,["мая"]=5,["июня"]=6,
@@ -76,18 +76,6 @@ local e = {
 --	[""]="",
 	}
 
-local tzs_names = {"ACDT","ACST","ACT","ADT","AEDT","AEST","AFT","AKDT","AKST",
-"AMST","AMT","ART","AST","AST","AST","AST","AWDT","AWST","AZOST","AZT","BDT",
-"BIOT","BIT","BOT","BRT","BST","BST","BTT","CAT","CCT","CDT","CEDT","CEST",
-"CET","CHAST","CIST","CKT","CLST","CLT","COST","COT","CST","CST","CVT","CXT",
-"CHST","DFT","EAST","EAT","ECT","ECT","EDT","EEDT","EEST","EET","EST","FJT",
-"FKST","FKT","GALT","GET","GFT","GILT","GIT","GMT","GST","GYT","HADT","HAST",
-"HKT","HMT","HST","IRKT","IRST","IST","IST","IST","JST","KRAT","KST","LHST",
-"LINT","MAGT","MDT","MIT","MSD","MSK","MST","MST","MST","MUT","NDT","NFT",
-"NPT","NST","NT","OMST","PDT","PETT","PHOT","PKT","PST","PST","RET","SAMT",
-"SAST","SBT","SCT","SLT","SST","SST","TAHT","THA","UTC","UYST","UYT","VET",
-"VLAT","WAT","WEDT","WEST","WET","YAKT","YEKT","Z","A","M","N","Y","MSK"}
-
 local pattern = { -- для распознавания дат, переданных одним строчным параметром
 	{"(-?%d%d%d%d?)[-%.%s/\\](%d%d)[-%.%s/\\](%d%d)",  	["order"] = {3,2,1} },  -- yyyy mm dd
 	{"(%d+)[-%.%s/\\](%d+)[-%.%s/\\](%d%d%d%d?)",	["order"] = {1,2,3} }, 		-- dd mm yyyy
@@ -139,7 +127,7 @@ local filling_months = function (mnlang, month_lang)
 	end
 end
 
--- 10) Блок общих функций
+-- Блок общих функций
 local function trim(str)
 	if not str then return nil
 	else return str:match'^()%s*$' and '' or str:match'^%s*(.*%S)'
@@ -206,7 +194,7 @@ local inlist = function ( var, list )
     return inlist
 end
 
--- 20) Блок общих проверочных функций, связанных с датами
+-- Блок общих проверочных функций, связанных с датами
 local function unwarp(tbl)
 	if not tbl then return ""
 	elseif type(tbl) ~= "table" then return tbl
@@ -305,7 +293,7 @@ local function dmdist(d1,d2)
 --	end
 end
 
--- 30) Блок функций для обработки ввода-вывода дат
+-- Блок функций для обработки ввода-вывода дат
 
 local function undate(tbl)
 	if not tbl then return ""
@@ -351,7 +339,7 @@ local function parse_date(date_string)
 		["year"] =numerize(out_date_str[3])}
 	return date --, error_data
 end
-----[[ УСТАРЕЛО ]]----
+-- DEPRECATED
 local numstr2date = function(numstr)
 	local format = "Y-m-d"
 	local iso_date = mwlang:formatDate(format,numstr)
@@ -491,7 +479,7 @@ local function double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 		trim(day2lang(cd,gdate,false)), trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
 end
 
--- 40) Блок функций для перевода дат с использованием [[Юлианская дата]]
+-- Блок функций для перевода дат с использованием [[Юлианская дата]]
 
 local function gri2jd( datein )
 	if not isdate(datein) then return error((datein.day or "") .. "." .. (datein.month or "") .."." .. (datein.year or "") .. " неподходящая дата") end
@@ -582,7 +570,7 @@ local function recalc(datein,calend)
    	end
 end
 
--- 50) Функции для обработки UTC
+-- Функции для обработки UTC
 
 local function utc(str,margin)
 	local d = 1
@@ -641,7 +629,7 @@ local function utc(str,margin)
 	return output
 end
 
--- 60) Блок функций ввода-вывода
+-- Блок функций ввода-вывода
 
 function p.NthDay( frame )
     local args = getArgs(frame, { frameOnly = true })
@@ -729,7 +717,7 @@ function p.BoxDate( frame )
 	end
 end
 
-function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
+function p.bxDate( txtDateIn , strFormat, params )
 	local txtDateOut, date, status = "", {}, {brk = false, errorCat = "", errorText = ""}
 	strFormat = strFormat or "j xg Y"
 	-- заглушка - таблица параметров на будущее
@@ -771,7 +759,7 @@ function p.bxDate( txtDateIn , strFormat, params ) -- к отладке
     return txtDateOut, date, status
 end
 
-function p.ToDate( frame ) -- возможно неиспользуемая
+function p.ToDate( frame )
     local args = getArgs(frame, { frameOnly = true })
     local mwlang = mw.getContentLanguage()
     local datein = args[1]
@@ -793,7 +781,7 @@ function p.unitime( frame )
     local utcin = ""
     local input = args[1]
     if not input then return "" end
-    if inlist(input:upper(),tzs_names) then 
+    if known_tzs[input:upper()] then 
     	utcin = known_tzs[input:upper()] 
     elseif (string.sub(input:upper(),1,3) == 'UTC') and (string.len(input) < 10) then
     	utcin = string.sub(input,4)
@@ -818,7 +806,7 @@ function p.unitime( frame )
 end
 
 
--- УСТАРЕЛО
+-- DEPRECATED
 -- =p.OldDate(mw.getCurrentFrame():newChild{title="smth",args={"20.02.2020","ю",["bc"]="1",["wd"]="1",["wy"]="1",["sq_brts"]="1",["yearmark"]="г."}})
 function p.OldDate( frame )
     local args = getArgs(frame, { frameOnly = true })
