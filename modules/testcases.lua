@@ -68,10 +68,27 @@ end
 function p:test_unitime()
 	self:preprocess_equals_many('{{#invoke:Calendar|unitime|', '}}', {
 		{'MSK', '[[UTC+3:00]]'},
+		{'UTC +3', '[[UTC+3:00]]'},
+		{' +2 ', '[[UTC+2:00]]'},
 		{'EST', '[[UTC&minus;5:00]]'},
 		{'+12:45|1', '[[UTC+12:45]], [[летнее время|летом]] [[UTC+13:45]]'},
 		{'-3:30|да', '[[UTC&minus;3:30]], [[летнее время|летом]] [[UTC&minus;2:30]]'},
 	})
+end
+
+-- деградация с категориями проверяется прямыми вызовами, чтобы категории
+-- не цеплялись к странице тестов
+function p:test_degradation()
+	local frame = mw.getCurrentFrame()
+	local out = Calendar.unitime(frame:newChild{title = 't', args = {'МСК'}})
+	self:equals('unitime("МСК"): возврат как есть + категория',
+		out:find('^МСК%[%[Категория:Википедия:Статьи с ошибочной работой') ~= nil, true)
+	out = Calendar.BoxDate(frame:newChild{title = 't', args = {'13 января'}})
+	self:equals('BoxDate("13 января"): span-ошибка + категория',
+		out:find('^<span class=error>') ~= nil and out:find('%[%[Категория:') ~= nil, true)
+	out = Calendar.NthDay(frame:newChild{title = 't', args = {'9', '0', '10', '2020'}})
+	self:equals('NthDay(9): span-ошибка + категория',
+		out:find('^<span class=error>') ~= nil and out:find('%[%[Категория:') ~= nil, true)
 end
 
 function p:test_bxDate()
