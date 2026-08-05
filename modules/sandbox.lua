@@ -49,13 +49,13 @@ local known_tzs = {
 
 local category = {
 	["no_parameters"]=
-	"<!--[[Категория:Модуль:Calendar:Страницы без параметров]]-->",
+	"[[Категория:Модуль:Calendar:Страницы без параметров]]",
 	["incomplete_parameters"]=
-	"<!--[[Категория:Модуль:Calendar:Страницы с неполными или некорректными параметрами]]-->",
+	"[[Категория:Модуль:Calendar:Страницы с неполными или некорректными параметрами]]",
 	["without_verification"]=
-	"<!--[[Категория:Модуль:Calendar:Страницы без проверки параметров]]-->",
+	"[[Категория:Модуль:Calendar:Страницы без проверки параметров]]",
 	["erroneous_parameters"]=
-	"<!--[[Категория:Модуль:Calendar:Страницы с ошибочными параметрами]]-->"
+	"[[Категория:Модуль:Calendar:Страницы с ошибочными параметрами]]"
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
@@ -637,15 +637,15 @@ function p.NthDay( frame )
     	purif(args[1]), purif(args[2]), purif(args[3]), purif(args[4]), args[5]
 	if not format then format = "%d.%m.%y" end
     if not inbord(num,-5,5) then 
-    	return error("The number must be between -5 and 5")
+    	return e.start .. "The number must be between -5 and 5" .. e.ending .. category.erroneous_parameters
     elseif num == 0 then 
-    	return error("The number must not be zero") end
+    	return e.start .. "The number must not be zero" .. e.ending .. category.erroneous_parameters end
     if not inbord(wday,0,6) then 
-    	return error("The day of the week must be between 0 and 6") end
+    	return e.start .. "The day of the week must be between 0 and 6" .. e.ending .. category.erroneous_parameters end
     if not inbord(mont,1,12) then 
-    	return error("The month must be between 1 and 12") end
+    	return e.start .. "The month must be between 1 and 12" .. e.ending .. category.erroneous_parameters end
     if not inbord(yea,0,9999) then 
-    	return error("Wrong year number") end
+    	return e.start .. "Wrong year number" .. e.ending .. category.erroneous_parameters end
     if inbord(num,1,5) then
         local m_start = os.time{year=yea, month=mont, day=1, hour=0}
         local m_wds = tonumber(os.date("%w", m_start)) 
@@ -711,7 +711,7 @@ function p.BoxDate( frame )
     local txtDateIn, strFormat  = args[1], args[2]
     local txtDateOut, date, status = p.bxDate(txtDateIn, strFormat, params)
 	if status.brk then
-		return error(status.errorText)
+		return e.start .. status.errorText .. e.ending .. (status.errorCat or "")
 	else
 		return txtDateOut
 	end
@@ -779,12 +779,12 @@ function p.unitime( frame )
     if not args[2] then 
     else DST = 1 end
     local utcin = ""
-    local input = args[1]
-    if not input then return "" end
+    local input = trim(args[1] or "")
+    if input == "" then return "" end
     if known_tzs[input:upper()] then 
     	utcin = known_tzs[input:upper()] 
     elseif (string.sub(input:upper(),1,3) == 'UTC') and (string.len(input) < 10) then
-    	utcin = string.sub(input,4)
+    	utcin = trim(string.sub(input,4))
     else 
     	if string.sub(input,1,1) == '[' 
         or string.sub(input,1,1) == '{' 
@@ -798,10 +798,16 @@ function p.unitime( frame )
     end
 --  elseif string.sub(input,1,3) ~= "−" then utcin = input
 --  or not (not input:find("[А-я]")) при наличии в строке юникода не работает
-    local output = ""
-    if DST == 0 then output = utc(utcin)
-    else output = utc(utcin) .. ", [[летнее время|летом]] " .. utc(utcin,DST)
+    local ok, output
+    if DST == 0 then
+    	ok, output = pcall(utc, utcin)
+    else
+    	ok, output = pcall(function()
+    		return utc(utcin) .. ", [[летнее время|летом]] " .. utc(utcin,DST)
+    	end)
     end
+    -- нераспознанное значение отдаётся как есть, страница попадает в категорию
+    if not ok then return input .. category.erroneous_parameters end
     return output
 end
 
@@ -813,7 +819,7 @@ function p.OldDate( frame )
     if not args[1] then return err end
     local gdate, jdate = {}, {}
     local strin = args[1] 
-    local cal = args[2]:lower() or "г"
+    local cal = (args[2] or "г"):lower()
     local bc = is(args["bc"])
     local wd = is(args["wd"])
     local wm = is(args["wm"])
@@ -1042,7 +1048,7 @@ function p.CalDate(frame)
 	if iso == "" then iso = mwlang:formatDate("Y-m-d") end
 	local date = iso2date(iso)
 	if not isdate(date) then
-		return e.start .. string.format(e.box_date, iso) .. e.ending
+		return e.start .. string.format(e.box_date, iso) .. e.ending .. category.erroneous_parameters
 	end
 	local id = trim(args[2] or "")
 	for i = 1, #calreg do
@@ -1050,7 +1056,7 @@ function p.CalDate(frame)
 			return cal_render(calreg[i], iso, gri2jd(date))
 		end
 	end
-	return e.start .. string.format(e.unknown_param, id) .. e.ending
+	return e.start .. string.format(e.unknown_param, id) .. e.ending .. category.erroneous_parameters
 end
 
 -- Дашборд: {{#invoke:Песочница/Carn/Calendar|Today}} → таблица «сегодня по всем
@@ -1061,7 +1067,7 @@ function p.Today(frame)
 	if iso == "" then iso = mwlang:formatDate("Y-m-d") end
 	local date = iso2date(iso)
 	if not isdate(date) then
-		return e.start .. string.format(e.box_date, iso) .. e.ending
+		return e.start .. string.format(e.box_date, iso) .. e.ending .. category.erroneous_parameters
 	end
 	local jd = gri2jd(date)
 	local rows = {'{| class="wikitable sortable"', '! Календарь !! Дата'}
