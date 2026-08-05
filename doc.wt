@@ -32,6 +32,15 @@
 * Второй аргумент — календарь: <code>григорианский</code>, <code>юлианский</code>, <code>исламский</code>, <code>иранский</code>, <code>еврейский</code>, <code>тайский</code>, <code>миньго</code>, <code>нэнго</code>, <code>коптский</code>
 * Для исламского, иранского, еврейского, тайского, миньго и нэнго используется встроенная поддержка MediaWiki (коды <code>x*</code> в [[mw:Help:Extension:ParserFunctions##time|#time]]), юлианский и коптский считаются арифметически через [[юлианский день]]
 
+Эти шесть календарей доступны и без модуля, напрямую кодами <code>x*</code> парсерной функции [[mw:Help:Extension:ParserFunctions##time|#time]]:
+* исламский: <code><nowiki>{{#time:xmj xmF xmY|2026-07-27}}</nowiki></code> = {{#time:xmj xmF xmY|2026-07-27}}
+* иранский: <code><nowiki>{{#time:xij xiF xiY|2026-07-27}}</nowiki></code> = {{#time:xij xiF xiY|2026-07-27}}
+* еврейский: <code><nowiki>{{#time:xjj xjF xjY|2026-07-27}}</nowiki></code> = {{#time:xjj xjF xjY|2026-07-27}}
+* тайский солнечный (год): <code><nowiki>{{#time:xkY|2026-07-27}}</nowiki></code> = {{#time:xkY|2026-07-27}}
+* миньго (год): <code><nowiki>{{#time:xoY|2026-07-27}}</nowiki></code> = {{#time:xoY|2026-07-27}}
+* нэнго (год): <code><nowiki>{{#time:xtY|2026-07-27}}</nowiki></code> = {{#time:xtY|2026-07-27}}
+Модуль добавляет к ним юлианский и коптский, единый интерфейс, проверку входа и категории отслеживания.
+
 Примеры на фиксированной дате 2026-07-27:
 {| class="wikitable"
 ! Календарь !! Фактически !! Ожидается
