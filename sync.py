@@ -32,6 +32,7 @@ PAGES = {
     "modules/calendar.lua": "Модуль:Calendar",
     "modules/sandbox.lua": "Модуль:Песочница/Carn/Calendar",  # рабочая песочница
     "modules/sandbox-doc.wt": "Модуль:Песочница/Carn/Calendar/doc",
+    "modules/testcases.lua": "Модуль:Calendar/testcases",
     "modules/yesno.lua": "Модуль:Yesno",
     "doc.wt": "Модуль:Calendar/doc",
     # личные песочницы Carn (зеркала)
@@ -45,7 +46,7 @@ PAGES = {
 }
 # что разрешено пушить (чужие общие модули - только pull)
 PUSH_ALLOWED = {"modules/calendar.lua", "modules/sandbox.lua", "modules/sandbox-doc.wt",
-                "doc.wt", "carn-sandbox/Text.lua"}
+                "doc.wt", "modules/testcases.lua", "carn-sandbox/Text.lua"}
 
 
 class Wiki:
