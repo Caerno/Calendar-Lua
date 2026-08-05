@@ -80,4 +80,10 @@ function p:test_bxDate()
 		'строка «13 января» не является верной датой, пожалуйста, укажите дату в формате ГГГГ-ММ-ДД')
 end
 
+-- обе точки входа равнозначны: {{#invoke:Calendar/testcases|run}} и |run_tests
+local unittester_run = p.run
+function p.run(a, b)
+	return unittester_run(p, b or a)
+end
+
 return p
