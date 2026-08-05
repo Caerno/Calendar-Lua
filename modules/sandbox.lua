@@ -47,15 +47,18 @@ local known_tzs = {
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
 }
 
+-- имена по конвенции [[:Категория:Википедия:Статьи по типам недостатков]]:
+-- «ошибочная работа» — результат выдать не удалось; «сложный вход» — результат
+-- выдан, но параметры пришлось чинить эвристиками
 local category = {
 	["no_parameters"]=
-	"[[Категория:Модуль:Calendar:Страницы без параметров]]",
+	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]",
 	["incomplete_parameters"]=
-	"[[Категория:Модуль:Calendar:Страницы с неполными или некорректными параметрами]]",
+	"[[Категория:Википедия:Статьи со сложным входом в Модуль:Calendar]]",
 	["without_verification"]=
-	"[[Категория:Модуль:Calendar:Страницы без проверки параметров]]",
+	"[[Категория:Википедия:Статьи со сложным входом в Модуль:Calendar]]",
 	["erroneous_parameters"]=
-	"[[Категория:Модуль:Calendar:Страницы с ошибочными параметрами]]"
+	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]"
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
@@ -736,12 +739,12 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    -- заменить сообщения об ошибках на списочные
 	    if not (date.year and type(date.year) == 'number') then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.incomplete_parameters
+	    	status.errorCat = category.erroneous_parameters
 	    	status.brk = true
 	    end
 	    if not inbord(date.month,1,12) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.incomplete_parameters
+	    	status.errorCat = category.erroneous_parameters
 	    	status.brk = true
 	    end
 	    if not date.day and string.find(strFormat,"[dDjlNwzW]") then
@@ -749,7 +752,7 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    elseif not date.day then
 	    elseif not inbord(date.day,1,month_end_day(date.month,date.year)) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.incomplete_parameters
+	    	status.errorCat = category.erroneous_parameters
 	    	status.brk = true
 	    end
 	end
