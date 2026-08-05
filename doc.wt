@@ -1,5 +1,5 @@
-{{module rating|p}}
 {{Рейтинг модуля|готов}}
+Об ошибках сообщайте на [[Обсуждение модуля:Calendar|странице обсуждения]]. Эксперименты — в [[Модуль:Песочница/Carn/Calendar|песочнице]], юнит-тесты — [[Модуль:Calendar/testcases]].
 
 === NthDay ===
 {{tl|ДатыСтрокой}}, {{tl|Даты}}
@@ -9,18 +9,22 @@
 ** последний (-1) понедельник (1) января (1) (2010) года =<code><nowiki>{{#invoke:Calendar|NthDay|-1|1|1|2010}}</nowiki></code>= {{#invoke:Calendar|NthDay|-1|1|1|2010}}
 ** предпоследняя (-2) суббота (6) декабря (12) (2001) года =<code><nowiki>{{#invoke:Calendar|NthDay|-2|6|12|2001}}</nowiki></code>= {{#invoke:Calendar|NthDay|-2|6|12|2001}}
 ** третье (3) воскресенье (0) марта (3) (2024) года в формате [[ISO 8601]]=<code><nowiki>{{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}</nowiki></code>= {{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}
+* Если вхождения не существует (например, пятого воскресенья месяца) — возвращается «―»; при аргументах вне допустимых диапазонов — сообщение об ошибке и категория отслеживания
 
 === unitime ===
 {{tl|НП/Формат времени}}
 * Оформляет ссылку на UTC, если есть '''любой''' второй параметр — ставит летнее время
+* Пробелы по краям входа обрезаются; нераспознанное значение возвращается без изменений, а страница попадает в категорию отслеживания
 ** <code><nowiki>{{#invoke:Calendar|unitime|-0}}</nowiki></code> = {{#invoke:Calendar|unitime|-0}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|+0}}</nowiki></code> = {{#invoke:Calendar|unitime|+0}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|+2:00}}</nowiki></code> = {{#invoke:Calendar|unitime|+2:00}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|−3:30|}}</nowiki></code> = {{#invoke:Calendar|unitime|−3:30|}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|+12:45|1}}</nowiki></code> = {{#invoke:Calendar|unitime|+12:45|1}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|-3:30|да}}</nowiki></code> = {{#invoke:Calendar|unitime|-3:30|да}}
+** <code><nowiki>{{#invoke:Calendar|unitime|UTC +3}}</nowiki></code> = {{#invoke:Calendar|unitime|UTC +3}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|CET}}</nowiki></code> = {{#invoke:Calendar|unitime|CET}}
 ** <code><nowiki>{{#invoke:Calendar|unitime|EST|no}}</nowiki></code> = {{#invoke:Calendar|unitime|EST|no}}
+** нераспознанное значение (пример не вызывается вживую, чтобы не категоризовать документацию): <code><nowiki>{{#invoke:Calendar|unitime|МСК}}</nowiki></code> = МСК
 
 === CalDate ===
 * Возвращает дату в заданном календаре
@@ -49,11 +53,9 @@
 | коптский || {{#invoke:Calendar|CalDate|2026-07-27|коптский}} || 20.11.1742
 |-
 | григорианский || {{#invoke:Calendar|CalDate|2026-07-27|григорианский}} || 27 июля 2026
-|-
-| неизвестный календарь || {{#invoke:Calendar|CalDate|2026-07-27|марсианский}} || сообщение об ошибке
-|-
-| некорректная дата || {{#invoke:Calendar|CalDate|мусор|еврейский}} || сообщение об ошибке
 |}
+
+При неизвестном календаре или нераспознанной дате возвращается сообщение вида <span class=error>Ошибка: параметр марсианский неизвестен.</span> и страница попадает в категорию отслеживания (примеры не вызываются вживую, чтобы не категоризовать документацию).
 
 Текущая дата: <code><nowiki>{{#invoke:Calendar|CalDate||еврейский}}</nowiki></code> = {{#invoke:Calendar|CalDate||еврейский}}
 
@@ -64,12 +66,13 @@
 {{#invoke:Calendar|Today}}
 
 === OldDate ===
-<span style="color:gray">устарело</span>
+<span style="color:gray">DEPRECATED</span>
 * Два обязательных аргумента, первый из которых — дата в формате ДД.ММ.ГГГГ или Д. М.ГГГГ, второй — григорианский/юлианский календарь, «г» или «ю»
 * Необязательные аргументы <code>bc</code> (до нашей эры), а также параметры викификации <code>wd</code>, <code>wm</code> и <code>wy</code>, связанные, соответственно с вифификацией дня, месяца и года
 * Можно использовать параметр <code>sq_brts</code> для использования квадратных скобок и параметр <code>yearmark</code> для нестандартного обозначения года
-** <code><nowiki>{{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}} <span style="color:red">'''ошибка!'''</span>
-** <code><nowiki>{{#invoke:Calendar|OldDate|31.12.1|г|bc=1}}</nowiki></code> = <strong class="error"><span class="scribunto-error" id="mw-scribunto-error-0">Ошибка Lua: bad argument #2 to 'formatDate' (not a valid timestamp).</span></strong>
+* Годы младше 100 функция не обрабатывает (примеры ниже захардкожены):
+** <code><nowiki>{{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}}</nowiki></code> = <strong class="error">Ошибка Lua: bad argument #2 to 'formatDate' (not a valid timestamp).</strong>
+** <code><nowiki>{{#invoke:Calendar|OldDate|31.12.1|г|bc=1}}</nowiki></code> = <strong class="error">Ошибка Lua: bad argument #2 to 'formatDate' (not a valid timestamp).</strong>
 ** <code><nowiki>{{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}</nowiki></code> = {{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}
 ** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}
 ** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}
@@ -103,13 +106,13 @@
 ** 12 July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|12 Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|12 July 2020}}
 ** July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|July 2020}}
 ** 13 août 1281, l W недели Y года =<code><nowiki>{{#invoke:Calendar|BoxDate|13 août 1281|l W недели Y года}}</nowiki></code>= {{#invoke:Calendar|BoxDate|13 août 1281|l W недели Y года}}
-** 13 января =<code><nowiki>{{#invoke:Calendar|BoxDate|13 января}}</nowiki></code>= {{#invoke:Calendar|BoxDate|13 января}}
+** 13 января 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|13 января 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|13 января 2020}}
+** дата без года не распознаётся (пример захардкожен): <code><nowiki>{{#invoke:Calendar|BoxDate|13 января}}</nowiki></code> = <span class=error>Ошибка: строка «13 января» не является верной датой, пожалуйста, укажите дату в формате ГГГГ-ММ-ДД.</span>
 
 ==== bxDate ====
-Реализует указанные выше функции для вызова из других модулей (см. пример использования в [[Модуль:Message box|Message box]]), todo:
+Реализует указанные выше функции для вызова из других модулей (см. пример использования в [[Модуль:Message box|Message box]]); возвращает <code>txtDateOut, date, status</code>, где <code>status</code> содержит <code>errorText</code> и <code>errorCat</code>. Todo:
 * поддержка отрицательных лет (запоминание знака, обработка в положительном виде, приделывание «до н. э.» в конце; 0000-01-01 невалидно)
 * преобразование даты в ISO формат, получение строки форматирования и преобразование по ней (необходимы доп.проверки для неточных дат)
-* отдавать параметры <code>errorText</code> и <code>errorCat</code>
 
 === ToDate ===
 * Получает дату в формате [[Википедия:Функции парсера##time]] и возвращает в формате <число> <месяц в родительном падеже> <год>
@@ -119,6 +122,12 @@
 ** 1602-02-01 =<code><nowiki>{{#invoke:Calendar|ToDate|1602-02-01}}</nowiki></code>= {{#invoke:Calendar|ToDate|1602-02-01}}
 ** 1 февраля 1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1 февраля 1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1 февраля 1602}}
 ** Завтра (+ 1 day) =<code><nowiki>{{#invoke:Calendar|ToDate|+ 1 day}}</nowiki></code>= {{#invoke:Calendar|ToDate|+ 1 day}}
+
+=== Категории отслеживания ===
+Страницы с проблемным входом модуль помечает скрытыми категориями:
+* [[:Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]] — результат выдать не удалось: выведено сообщение об ошибке, а в unitime значение возвращено без обработки;
+* [[:Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]] — результат выдан, но параметры пришлось восстанавливать эвристиками;
+* [[:Категория:Википедия:Ошибка в часовом поясе НП]] — часовой пояс задан числом без знака.
 
 <includeonly>[[Категория:Модули:Работа с датами]]</includeonly>
 <noinclude>[[Категория:Модули:Документация]]</noinclude>
