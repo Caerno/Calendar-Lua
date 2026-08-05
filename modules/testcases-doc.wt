@@ -1,3 +1,1 @@
-Юнит-тесты [[Модуль:Calendar]]. Таблицы обновляются при каждом рендере страницы.
-
-{{#invoke:Calendar/testcases|run_tests}}
+{{#invoke:Calendar/testcases|run}}

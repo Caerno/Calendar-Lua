@@ -1,62 +1,124 @@
-Песочница [[Модуль:Calendar]]: копия основного модуля с экспериментальным блоком — реестр календарей и функции '''CalDate''' и '''Today'''. Описание остальных функций — в [[Модуль:Calendar/doc|документации основного модуля]].
+{{module rating|p}}
+{{Рейтинг модуля|готов}}
 
-== CalDate ==
-Возвращает дату в заданном календаре.
-* первый аргумент — дата по григорианскому календарю в формате ГГГГ-ММ-ДД; пустой или отсутствует — текущая дата (по UTC);
-* второй аргумент — календарь: <code>григорианский</code>, <code>юлианский</code>, <code>исламский</code>, <code>иранский</code>, <code>еврейский</code>, <code>тайский</code>, <code>миньго</code>, <code>нэнго</code>, <code>коптский</code>.
+=== NthDay ===
+{{tl|ДатыСтрокой}}, {{tl|Даты}}
+* Получает 4 числовых аргумента, считает дату и выдаёт её в формате пятого, необязательного аргумента. Примеры использования (значения аргументов в скобках):
+** первое (1) воскресенье (0) октября (10) (2020) года =<code><nowiki>{{#invoke:Calendar|NthDay|1|0|10|2020}}</nowiki></code>= {{#invoke:Calendar|NthDay|1|0|10|2020}}
+** вторая (2) среда (3) мая (5) (2019) года =<code><nowiki>{{#invoke:Calendar|NthDay|2|3|5|2019}}</nowiki></code>= {{#invoke:Calendar|NthDay|2|3|5|2019}}
+** последний (-1) понедельник (1) января (1) (2010) года =<code><nowiki>{{#invoke:Calendar|NthDay|-1|1|1|2010}}</nowiki></code>= {{#invoke:Calendar|NthDay|-1|1|1|2010}}
+** предпоследняя (-2) суббота (6) декабря (12) (2001) года =<code><nowiki>{{#invoke:Calendar|NthDay|-2|6|12|2001}}</nowiki></code>= {{#invoke:Calendar|NthDay|-2|6|12|2001}}
+** третье (3) воскресенье (0) марта (3) (2024) года в формате [[ISO 8601]]=<code><nowiki>{{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}</nowiki></code>= {{#invoke:Calendar|NthDay|3|0|3|2024|%Y-%m-%d}}
+
+=== unitime ===
+{{tl|НП/Формат времени}}
+* Оформляет ссылку на UTC, если есть '''любой''' второй параметр — ставит летнее время
+** <code><nowiki>{{#invoke:Calendar|unitime|-0}}</nowiki></code> = {{#invoke:Calendar|unitime|-0}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+0}}</nowiki></code> = {{#invoke:Calendar|unitime|+0}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+2:00}}</nowiki></code> = {{#invoke:Calendar|unitime|+2:00}}
+** <code><nowiki>{{#invoke:Calendar|unitime|−3:30|}}</nowiki></code> = {{#invoke:Calendar|unitime|−3:30|}}
+** <code><nowiki>{{#invoke:Calendar|unitime|+12:45|1}}</nowiki></code> = {{#invoke:Calendar|unitime|+12:45|1}}
+** <code><nowiki>{{#invoke:Calendar|unitime|-3:30|да}}</nowiki></code> = {{#invoke:Calendar|unitime|-3:30|да}}
+** <code><nowiki>{{#invoke:Calendar|unitime|CET}}</nowiki></code> = {{#invoke:Calendar|unitime|CET}}
+** <code><nowiki>{{#invoke:Calendar|unitime|EST|no}}</nowiki></code> = {{#invoke:Calendar|unitime|EST|no}}
+
+=== CalDate ===
+* Возвращает дату в заданном календаре
+* Первый аргумент — дата по григорианскому календарю в формате ГГГГ-ММ-ДД; пустой или отсутствует — текущая дата (по UTC)
+* Второй аргумент — календарь: <code>григорианский</code>, <code>юлианский</code>, <code>исламский</code>, <code>иранский</code>, <code>еврейский</code>, <code>тайский</code>, <code>миньго</code>, <code>нэнго</code>, <code>коптский</code>
+* Для исламского, иранского, еврейского, тайского, миньго и нэнго используется встроенная поддержка MediaWiki (коды <code>x*</code> в [[mw:Help:Extension:ParserFunctions##time|#time]]), юлианский и коптский считаются арифметически через [[юлианский день]]
 
 Примеры на фиксированной дате 2026-07-27:
 {| class="wikitable"
 ! Календарь !! Фактически !! Ожидается
 |-
-| исламский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|исламский}} || 11 Сафар 1448
+| исламский || {{#invoke:Calendar|CalDate|2026-07-27|исламский}} || 11 Сафар 1448
 |-
-| иранский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|иранский}} || 5 Мордад 1405
+| иранский || {{#invoke:Calendar|CalDate|2026-07-27|иранский}} || 5 Мордад 1405
 |-
-| еврейский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|еврейский}} || 13 Ав 5786
+| еврейский || {{#invoke:Calendar|CalDate|2026-07-27|еврейский}} || 13 Ав 5786
 |-
-| тайский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|тайский}} || 27 июля 2569
+| тайский || {{#invoke:Calendar|CalDate|2026-07-27|тайский}} || 27 июля 2569
 |-
-| миньго || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|миньго}} || 27 июля 115
+| миньго || {{#invoke:Calendar|CalDate|2026-07-27|миньго}} || 27 июля 115
 |-
-| нэнго || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|нэнго}} || 27 июля (令和8)
+| нэнго || {{#invoke:Calendar|CalDate|2026-07-27|нэнго}} || 27 июля (令和8)
 |-
-| юлианский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|юлианский}} || 14.07.2026
+| юлианский || {{#invoke:Calendar|CalDate|2026-07-27|юлианский}} || 14.07.2026
 |-
-| коптский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|коптский}} || 20.11.1742
+| коптский || {{#invoke:Calendar|CalDate|2026-07-27|коптский}} || 20.11.1742
 |-
-| григорианский || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|григорианский}} || 27 июля 2026
+| григорианский || {{#invoke:Calendar|CalDate|2026-07-27|григорианский}} || 27 июля 2026
 |-
-| неизвестный календарь || {{#invoke:Песочница/Carn/Calendar|CalDate|2026-07-27|марсианский}} || сообщение об ошибке
+| неизвестный календарь || {{#invoke:Calendar|CalDate|2026-07-27|марсианский}} || сообщение об ошибке
 |-
-| некорректная дата || {{#invoke:Песочница/Carn/Calendar|CalDate|мусор|еврейский}} || сообщение об ошибке
+| некорректная дата || {{#invoke:Calendar|CalDate|мусор|еврейский}} || сообщение об ошибке
 |}
 
-Текущая дата: <code><nowiki>{{#invoke:Песочница/Carn/Calendar|CalDate||еврейский}}</nowiki></code> = {{#invoke:Песочница/Carn/Calendar|CalDate||еврейский}}
+Текущая дата: <code><nowiki>{{#invoke:Calendar|CalDate||еврейский}}</nowiki></code> = {{#invoke:Calendar|CalDate||еврейский}}
 
-== Today ==
-Возвращает таблицу с датой по всем календарям реестра. Без аргументов — текущая дата; необязательный первый аргумент — фиксированная дата в формате ГГГГ-ММ-ДД.
+=== Today ===
+* Возвращает таблицу с датой по всем календарям реестра
+* Без аргументов — текущая дата; необязательный первый аргумент — фиксированная дата в формате ГГГГ-ММ-ДД
 
-{{#invoke:Песочница/Carn/Calendar|Today}}
+{{#invoke:Calendar|Today}}
 
-== Сравнение с основным модулем ==
-Функции основного модуля в песочнице не изменены; результаты должны совпадать.
-{| class="wikitable"
-! Вызов !! [[Модуль:Calendar]] !! Песочница
-|-
-| <code><nowiki>NthDay|1|0|10|2020|%Y-%m-%d</nowiki></code> || {{#invoke:Calendar|NthDay|1|0|10|2020|%Y-%m-%d}} || {{#invoke:Песочница/Carn/Calendar|NthDay|1|0|10|2020|%Y-%m-%d}}
-|-
-| <code><nowiki>NthDay|-1|5|2|2024|%Y-%m-%d</nowiki></code> || {{#invoke:Calendar|NthDay|-1|5|2|2024|%Y-%m-%d}} || {{#invoke:Песочница/Carn/Calendar|NthDay|-1|5|2|2024|%Y-%m-%d}}
-|-
-| <code><nowiki>NewDate|20.02.1917|ю|wd=1|wy=1</nowiki></code> || {{#invoke:Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}}
-|-
-| <code><nowiki>NewDate|2020-02-20|г|bc=1</nowiki></code> || {{#invoke:Calendar|NewDate|2020-02-20|г|bc=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|2020-02-20|г|bc=1}}
-|-
-| <code><nowiki>ToIso|12 декабря 2020</nowiki></code> || {{#invoke:Calendar|ToIso|12 декабря 2020}} || {{#invoke:Песочница/Carn/Calendar|ToIso|12 декабря 2020}}
-|-
-| <code><nowiki>BoxDate|06.1280|F Y года</nowiki></code> || {{#invoke:Calendar|BoxDate|06.1280|F Y года}} || {{#invoke:Песочница/Carn/Calendar|BoxDate|06.1280|F Y года}}
-|-
-| <code><nowiki>unitime|MSK</nowiki></code> || {{#invoke:Calendar|unitime|MSK}} || {{#invoke:Песочница/Carn/Calendar|unitime|MSK}}
-|-
-| <code><nowiki>unitime|+5:45|1</nowiki></code> || {{#invoke:Calendar|unitime|+5:45|1}} || {{#invoke:Песочница/Carn/Calendar|unitime|+5:45|1}}
-|}
+=== OldDate ===
+<span style="color:gray">устарело</span>
+* Два обязательных аргумента, первый из которых — дата в формате ДД.ММ.ГГГГ или Д. М.ГГГГ, второй — григорианский/юлианский календарь, «г» или «ю»
+* Необязательные аргументы <code>bc</code> (до нашей эры), а также параметры викификации <code>wd</code>, <code>wm</code> и <code>wy</code>, связанные, соответственно с вифификацией дня, месяца и года
+* Можно использовать параметр <code>sq_brts</code> для использования квадратных скобок и параметр <code>yearmark</code> для нестандартного обозначения года
+** <code><nowiki>{{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|1.1.1|ю|wd=1}} <span style="color:red">'''ошибка!'''</span>
+** <code><nowiki>{{#invoke:Calendar|OldDate|31.12.1|г|bc=1}}</nowiki></code> = <strong class="error"><span class="scribunto-error" id="mw-scribunto-error-0">Ошибка Lua: bad argument #2 to 'formatDate' (not a valid timestamp).</span></strong>
+** <code><nowiki>{{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}</nowiki></code> = {{#invoke:Calendar|OldDate|{{#time: d.m.Y }}|г}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=0|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|j|wd=1|wm=1|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|g|bc=1|yearmark=г.}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|g|bc=1|yearmark=г.}}
+** <code><nowiki>{{#invoke:Calendar|OldDate|11.2.1602|g|sq_brts=1|yearmark=0}}</nowiki></code> = {{#invoke:Calendar|OldDate|11.2.1602|g|sq_brts=1|yearmark=0}}
+
+=== NewDate ===
+{{tl|DateStyle}}
+* Аналогично функции выше, но может обрабатывать отрицательные даты и принимает жёстко только 2 формата d.m.y и y-m-d
+** <code><nowiki>{{#invoke:Calendar|NewDate|1.1.1|ю|wd=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|1.1.1|ю|wd=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|31.12.1|г|bc=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|31.12.1|г|bc=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|{{#time: d.m.Y }}}}</nowiki></code> = {{#invoke:Calendar|NewDate|{{#time: d.m.Y }}}} ''(по умолчанию григорианский)''
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=0|wy=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=0|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=1|wy=1}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|j|wd=1|wm=1|wy=1}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|bc=1|yearmark=г.}}
+** <code><nowiki>{{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}</nowiki></code> = {{#invoke:Calendar|NewDate|11.2.1602|g|sq_brts=1|yearmark=0}}
+
+=== ToIso ===
+* Получает полную дату дату в форматах с четырёхзначным годом и выдаёт дату в формате ГГГГ-ММ-ДД
+** 1.2.1602 =<code><nowiki>{{#invoke:Calendar|ToIso|1.2.1602}}</nowiki></code>= {{#invoke:Calendar|ToIso|1.2.1602}}
+** -2020-12-12 =<code><nowiki>{{#invoke:Calendar|ToIso|-2020-12-12}}</nowiki></code>= {{#invoke:Calendar|ToIso|-2020-12-12}}
+** 5 января 1002 =<code><nowiki>{{#invoke:Calendar|ToIso|5 января 1002}}</nowiki></code>= {{#invoke:Calendar|ToIso|5 января 1002}}
+
+=== BoxDate ===
+* Получает дату с четырёхзначным годом, месяцем и опционально днём месяца, выдаёт читаемую
+** 06.1280 =<code><nowiki>{{#invoke:Calendar|BoxDate|06.1280}}</nowiki></code>= {{#invoke:Calendar|BoxDate|06.1280}}
+** 1820-07 =<code><nowiki>{{#invoke:Calendar|BoxDate|1820-07}}</nowiki></code>= {{#invoke:Calendar|BoxDate|1820-07}}
+** 2020-12, xg Y = <code><nowiki>{{#invoke:Calendar|BoxDate|2020-12|xg Y}}</nowiki></code>= {{#invoke:Calendar|BoxDate|2020-12|xg Y}}
+** 08.08.1828 =<code><nowiki>{{#invoke:Calendar|BoxDate|08.08.1828}}</nowiki></code>= {{#invoke:Calendar|BoxDate|08.08.1828}}
+** July 12, 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|Jule 12, 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|July 12, 2020}}
+** 12 July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|12 Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|12 July 2020}}
+** July 2020 =<code><nowiki>{{#invoke:Calendar|BoxDate|Jule 2020}}</nowiki></code>= {{#invoke:Calendar|BoxDate|July 2020}}
+** 13 août 1281, l W недели Y года =<code><nowiki>{{#invoke:Calendar|BoxDate|13 août 1281|l W недели Y года}}</nowiki></code>= {{#invoke:Calendar|BoxDate|13 août 1281|l W недели Y года}}
+** 13 января =<code><nowiki>{{#invoke:Calendar|BoxDate|13 января}}</nowiki></code>= {{#invoke:Calendar|BoxDate|13 января}}
+
+==== bxDate ====
+Реализует указанные выше функции для вызова из других модулей (см. пример использования в [[Модуль:Message box|Message box]]), todo:
+* поддержка отрицательных лет (запоминание знака, обработка в положительном виде, приделывание «до н. э.» в конце; 0000-01-01 невалидно)
+* преобразование даты в ISO формат, получение строки форматирования и преобразование по ней (необходимы доп.проверки для неточных дат)
+* отдавать параметры <code>errorText</code> и <code>errorCat</code>
+
+=== ToDate ===
+* Получает дату в формате [[Википедия:Функции парсера##time]] и возвращает в формате <число> <месяц в родительном падеже> <год>
+* Если в строке нету символов препинания, то возвращает её неизменённой
+** 1.2.1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1.2.1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1.2.1602}}
+** 1/2/1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1/2/1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1/2/1602}}
+** 1602-02-01 =<code><nowiki>{{#invoke:Calendar|ToDate|1602-02-01}}</nowiki></code>= {{#invoke:Calendar|ToDate|1602-02-01}}
+** 1 февраля 1602 =<code><nowiki>{{#invoke:Calendar|ToDate|1 февраля 1602}}</nowiki></code>= {{#invoke:Calendar|ToDate|1 февраля 1602}}
+** Завтра (+ 1 day) =<code><nowiki>{{#invoke:Calendar|ToDate|+ 1 day}}</nowiki></code>= {{#invoke:Calendar|ToDate|+ 1 day}}
+
+<includeonly>[[Категория:Модули:Работа с датами]]</includeonly>
+<noinclude>[[Категория:Модули:Документация]]</noinclude>

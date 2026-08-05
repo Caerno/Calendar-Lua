@@ -1,6 +1,7 @@
--- Юнит-тесты [[Модуль:Calendar]]. Запуск: {{#invoke:Calendar/testcases|run_tests}}
-local Calendar = require('Модуль:Calendar')
-local p = require('Модуль:UnitTests')
+-- Юнит-тесты [[Module:Calendar]]
+
+local Calendar = require('Module:Calendar')
+local p = require('Module:UnitTests')
 
 function p:test_CalDate()
 	self:preprocess_equals_many('{{#invoke:Calendar|CalDate|', '}}', {
@@ -80,7 +81,7 @@ function p:test_bxDate()
 		'строка «13 января» не является верной датой, пожалуйста, укажите дату в формате ГГГГ-ММ-ДД')
 end
 
--- обе точки входа равнозначны: {{#invoke:Calendar/testcases|run}} и |run_tests
+-- {{#invoke:Calendar/testcases|run}} и |run_tests
 local unittester_run = p.run
 function p.run(a, b)
 	return unittester_run(p, b or a)
