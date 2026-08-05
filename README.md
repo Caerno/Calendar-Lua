@@ -45,9 +45,8 @@ allowed host.
 
 ## Licensing
 
-Three parts, see [LICENSE](LICENSE):
+Two parts, see [LICENSE](LICENSE):
 
-- `modules/`, `doc.wt`, `carn-sandbox/` — wiki content, **CC BY-SA 4.0**,
-  attribution via the linked page histories;
-- `lualib/` — MediaWiki Scribunto, **GPL-2.0-or-later**, see [COPYING](COPYING);
-- `sync.py`, `deploy.sh`, workflows — **MIT**.
+- everything except `lualib/` — wiki content and tooling, **CC BY-SA 4.0**;
+  attribution for the wiki content via the linked page histories;
+- `lualib/` — MediaWiki Scribunto, **GPL-2.0-or-later**, see [COPYING](COPYING).
