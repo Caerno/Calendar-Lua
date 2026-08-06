@@ -45,20 +45,20 @@ local known_tzs = {
    WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00',
    -- US Millitary (for RFC-822)
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
+   -- российское обозначение
+   ["МСК"]='+03:00',
 }
 
 -- имена по конвенции [[:Категория:Википедия:Статьи по типам недостатков]]:
 -- «ошибочная работа» — результат выдать не удалось; «неполные или некорректные
 -- параметры» — результат выдан, но параметры пришлось восстанавливать эвристиками
+local cat_erroneous  = "[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]"
+local cat_incomplete = "[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]"
 local category = {
-	["no_parameters"]=
-	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]",
-	["incomplete_parameters"]=
-	"[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]",
-	["without_verification"]=
-	"[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]",
-	["erroneous_parameters"]=
-	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]"
+	["no_parameters"]         = cat_erroneous,
+	["incomplete_parameters"] = cat_incomplete,
+	["without_verification"]  = cat_incomplete,
+	["erroneous_parameters"]  = cat_erroneous,
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
@@ -739,12 +739,12 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    -- заменить сообщения об ошибках на списочные
 	    if not (date.year and type(date.year) == 'number') then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	    if not inbord(date.month,1,12) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	    if not date.day and string.find(strFormat,"[dDjlNwzW]") then
@@ -752,7 +752,7 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    elseif not date.day then
 	    elseif not inbord(date.day,1,month_end_day(date.month,date.year)) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	end
@@ -781,26 +781,29 @@ function p.unitime( frame )
     local DST = 0
     if not args[2] then 
     else DST = 1 end
-    local utcin = ""
     local input = trim(args[1] or "")
     if input == "" then return "" end
-    if known_tzs[input:upper()] then 
-    	utcin = known_tzs[input:upper()] 
-    elseif (string.sub(input:upper(),1,3) == 'UTC') and (string.len(input) < 10) then
-    	utcin = trim(string.sub(input,4))
-    else 
-    	if string.sub(input,1,1) == '[' 
-        or string.sub(input,1,1) == '{' 
-        or string.sub(input,1,1):upper() == 'U' 
-        or string.sub(input,1,1):upper() == 'M' then
-    	    return input 
---      elseif not string.find(string.upper(string.sub(input,1,1)),"[\65-\90]") or
---      not string.find(string.upper(string.sub(input,1,1)),"[\192-\223]") then
---    	return input
-    	else utcin = input end 
+    -- уже оформленное (вики-ссылка или шаблон) возвращается как есть
+    if string.sub(input,1,1) == '[' or string.sub(input,1,1) == '{' then
+        return input
     end
---  elseif string.sub(input,1,3) ~= "−" then utcin = input
---  or not (not input:find("[А-я]")) при наличии в строке юникода не работает
+    -- разбор по классам символов: [буквы] [знак] [часы[:минуты]]
+    local letters, sign, digits = mw.ustring.match(input, '^(%a*)%s*([+±−%-]?)%s*(%d*:?%d*)$')
+    local utcin
+    if letters then
+        local base = known_tzs[mw.ustring.upper(letters)]
+        if letters == '' and (sign ~= '' or digits ~= '') then
+            utcin = sign .. digits          -- чистое смещение: +3, −5:30, 3
+        elseif base and sign == '' and digits == '' then
+            utcin = base                    -- аббревиатура: МСК, CET, UTC
+        elseif mw.ustring.upper(letters) == 'UTC' and digits ~= '' then
+            utcin = sign .. digits          -- UTC+3, utc-5:30, UTC −3:30
+        end
+    end
+    if not utcin then
+        -- не распознано: вернуть как есть, пометить категорией
+        return input .. category.erroneous_parameters
+    end
     local ok, output
     if DST == 0 then
     	ok, output = pcall(utc, utcin)
@@ -809,7 +812,6 @@ function p.unitime( frame )
     		return utc(utcin) .. ", [[летнее время|летом]] " .. utc(utcin,DST)
     	end)
     end
-    -- нераспознанное значение отдаётся как есть, страница попадает в категорию
     if not ok then return input .. category.erroneous_parameters end
     return output
 end
