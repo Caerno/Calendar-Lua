@@ -68,6 +68,8 @@ end
 function p:test_unitime()
 	self:preprocess_equals_many('{{#invoke:Calendar|unitime|', '}}', {
 		{'MSK', '[[UTC+3:00]]'},
+		{'МСК', '[[UTC+3:00]]'},
+		{'мск', '[[UTC+3:00]]'},
 		{'UTC +3', '[[UTC+3:00]]'},
 		{' +2 ', '[[UTC+2:00]]'},
 		{'EST', '[[UTC&minus;5:00]]'},
@@ -80,9 +82,9 @@ end
 -- не цеплялись к странице тестов
 function p:test_degradation()
 	local frame = mw.getCurrentFrame()
-	local out = Calendar.unitime(frame:newChild{title = 't', args = {'МСК'}})
-	self:equals('unitime("МСК"): возврат как есть + категория',
-		out:find('^МСК%[%[Категория:Википедия:Статьи с ошибочной работой') ~= nil, true)
+	local out = Calendar.unitime(frame:newChild{title = 't', args = {'МСК+4'}})
+	self:equals('unitime("МСК+4"): возврат как есть + категория',
+		out:find('^МСК%+4%[%[Категория:Википедия:Статьи с ошибочной работой') ~= nil, true)
 	out = Calendar.BoxDate(frame:newChild{title = 't', args = {'13 января'}})
 	self:equals('BoxDate("13 января"): span-ошибка + категория',
 		out:find('^<span class=error>') ~= nil and out:find('%[%[Категория:') ~= nil, true)

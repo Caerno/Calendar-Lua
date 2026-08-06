@@ -45,20 +45,20 @@ local known_tzs = {
    WEST='+01:00', WET ='+00:00', YAKT='+09:00', YEKT ='+05:00',
    -- US Millitary (for RFC-822)
    Z='+00:00', A='-01:00', M='-12:00', N='+01:00', Y='+12:00',
+   -- российское обозначение
+   ["МСК"]='+03:00',
 }
 
 -- имена по конвенции [[:Категория:Википедия:Статьи по типам недостатков]]:
 -- «ошибочная работа» — результат выдать не удалось; «неполные или некорректные
 -- параметры» — результат выдан, но параметры пришлось восстанавливать эвристиками
+local cat_erroneous  = "[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]"
+local cat_incomplete = "[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]"
 local category = {
-	["no_parameters"]=
-	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]",
-	["incomplete_parameters"]=
-	"[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]",
-	["without_verification"]=
-	"[[Категория:Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar]]",
-	["erroneous_parameters"]=
-	"[[Категория:Википедия:Статьи с ошибочной работой Модуль:Calendar]]"
+	["no_parameters"]         = cat_erroneous,
+	["incomplete_parameters"] = cat_incomplete,
+	["without_verification"]  = cat_incomplete,
+	["erroneous_parameters"]  = cat_erroneous,
 }
 
 -- несколько параметров передаются вместе с кодом ошибки в таблице, один может быть передан простым значением
@@ -739,12 +739,12 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    -- заменить сообщения об ошибках на списочные
 	    if not (date.year and type(date.year) == 'number') then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	    if not inbord(date.month,1,12) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	    if not date.day and string.find(strFormat,"[dDjlNwzW]") then
@@ -752,7 +752,7 @@ function p.bxDate( txtDateIn , strFormat, params )
 	    elseif not date.day then
 	    elseif not inbord(date.day,1,month_end_day(date.month,date.year)) then 
 	    	status.errorText = string.format(e.box_date,txtDateIn)
-	    	status.errorCat = category.erroneous_parameters
+	    	status.errorCat = category.incomplete_parameters
 	    	status.brk = true
 	    end
 	end
@@ -784,9 +784,10 @@ function p.unitime( frame )
     local utcin = ""
     local input = trim(args[1] or "")
     if input == "" then return "" end
-    if known_tzs[input:upper()] then 
-    	utcin = known_tzs[input:upper()] 
-    elseif (string.sub(input:upper(),1,3) == 'UTC') and (string.len(input) < 10) then
+    local up = mw.ustring.upper(input)
+    if known_tzs[up] then 
+    	utcin = known_tzs[up] 
+    elseif (string.sub(up,1,3) == 'UTC') and (string.len(input) < 10) then
     	utcin = trim(string.sub(input,4))
     else 
     	if string.sub(input,1,1) == '[' 
