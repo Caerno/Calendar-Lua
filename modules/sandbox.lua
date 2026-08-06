@@ -781,27 +781,29 @@ function p.unitime( frame )
     local DST = 0
     if not args[2] then 
     else DST = 1 end
-    local utcin = ""
     local input = trim(args[1] or "")
     if input == "" then return "" end
-    local up = mw.ustring.upper(input)
-    if known_tzs[up] then 
-    	utcin = known_tzs[up] 
-    elseif (string.sub(up,1,3) == 'UTC') and (string.len(input) < 10) then
-    	utcin = trim(string.sub(input,4))
-    else 
-    	if string.sub(input,1,1) == '[' 
-        or string.sub(input,1,1) == '{' 
-        or string.sub(input,1,1):upper() == 'U' 
-        or string.sub(input,1,1):upper() == 'M' then
-    	    return input 
---      elseif not string.find(string.upper(string.sub(input,1,1)),"[\65-\90]") or
---      not string.find(string.upper(string.sub(input,1,1)),"[\192-\223]") then
---    	return input
-    	else utcin = input end 
+    -- уже оформленное (вики-ссылка или шаблон) возвращается как есть
+    if string.sub(input,1,1) == '[' or string.sub(input,1,1) == '{' then
+        return input
     end
---  elseif string.sub(input,1,3) ~= "−" then utcin = input
---  or not (not input:find("[А-я]")) при наличии в строке юникода не работает
+    -- разбор по классам символов: [буквы] [знак] [часы[:минуты]]
+    local letters, sign, digits = mw.ustring.match(input, '^(%a*)%s*([+±−%-]?)%s*(%d*:?%d*)$')
+    local utcin
+    if letters then
+        local base = known_tzs[mw.ustring.upper(letters)]
+        if letters == '' and (sign ~= '' or digits ~= '') then
+            utcin = sign .. digits          -- чистое смещение: +3, −5:30, 3
+        elseif base and sign == '' and digits == '' then
+            utcin = base                    -- аббревиатура: МСК, CET, UTC
+        elseif mw.ustring.upper(letters) == 'UTC' and digits ~= '' then
+            utcin = sign .. digits          -- UTC+3, utc-5:30, UTC −3:30
+        end
+    end
+    if not utcin then
+        -- не распознано: вернуть как есть, пометить категорией
+        return input .. category.erroneous_parameters
+    end
     local ok, output
     if DST == 0 then
     	ok, output = pcall(utc, utcin)
@@ -810,7 +812,6 @@ function p.unitime( frame )
     		return utc(utcin) .. ", [[летнее время|летом]] " .. utc(utcin,DST)
     	end)
     end
-    -- нераспознанное значение отдаётся как есть, страница попадает в категорию
     if not ok then return input .. category.erroneous_parameters end
     return output
 end
