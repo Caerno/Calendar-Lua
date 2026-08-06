@@ -788,7 +788,7 @@ function p.unitime( frame )
         return input
     end
     -- разбор по классам символов: [буквы] [знак] [часы[:минуты]]
-    local letters, sign, digits = mw.ustring.match(input, '^(%a*)%s*([+±−%-]?)%s*(%d*:?%d*)$')
+    local letters, sign, digits = mw.ustring.match(input, '^(%a*)%s*([+±−%-]?)%s*(%d*[:.]?%d*)$')
     local utcin
     if letters then
         local base = known_tzs[mw.ustring.upper(letters)]
