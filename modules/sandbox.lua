@@ -388,22 +388,24 @@ local function year2lang(numyear,yearmark,wiki)
 	return trim(output)
 end
 	
-local function day2lang(datein,wikidate,wiki,inner_brt)
+-- prefix — текст перед днём внутри подписи ссылки (открывающая скобка при inner_brt)
+local function day2lang(datein,wikidate,wiki,inner_brt,prefix)
 --	if not isdate(wikidate) then wiki = false end
 	if not ispartdate(datein) then return "" end
 	local dm_separ, output = "", nil
 	if (not (not datein.day)) and (not (not datein.month)) then dm_separ = " " end
 	if (not datein.month) then datein.month = "" end
 	if (not datein.day) then datein.day = "" end
+	if not prefix then prefix = "" end
 	local monlan = monthlang[datein.month] or ""
 	if wiki and not inner_brt then
 		output = tCon({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
-			"|", (datein.day or ""), dm_separ, monlan, "]]"})
+			"|", prefix, (datein.day or ""), dm_separ, monlan, "]]"})
 	elseif wiki then
 		output = tCon({"[[", wikidate.day, " ", monthlang[wikidate.month] or "",
-			"|", (datein.day or ""), dm_separ, monlan})
+			"|", prefix, (datein.day or ""), dm_separ, monlan})
 	else
-		output = tCon({datein.day, dm_separ, monlan})
+		output = tCon({prefix, datein.day, dm_separ, monlan})
 	end
     return trim(output)
 end
@@ -472,11 +474,15 @@ local function double_couple(jdate, gdate, wd, wm, wy, sq_brts, yearmark)
 		cd.month = gd.month
 		gd.month, jd.month = nil, nil
 	end	
-	if (not not cd.month) and wm then 
-		return tCon({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
-		trim(left .. day2lang(gd,gdate,wd,wm) .. " " .. year2lang(gd.year,yearmark,wy)) .. right, 
+	if (not not cd.month) and wm then
+		-- ссылка тут сквозная (закрывается после общего месяца), поэтому открывающая
+		-- скобка уходит внутрь подписи: [[21 февраля|(21) февраля]], а не ([[21 февраля|21) февраля]]
+		local gday = day2lang(gd,gdate,wd,wm,left)
+		if gday == "" then gday = left end
+		return tCon({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2],
+		trim(gday .. " " .. year2lang(gd.year,yearmark,wy)) .. right,
 		day2lang(cd,gdate,false) .. "]]", trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
-	end 
+	end
 	return tCon({comment[1] .. trim(day2lang(jd,jdate,false) .. " " .. year2lang(jd.year,yearmark,false)) .. comment[2], 
 		trim(left .. day2lang(gd,gdate,wd) .. " " .. year2lang(gd.year,yearmark,wy)) .. right, 
 		trim(day2lang(cd,gdate,false)), trim(year2lang(cd.year,yearmark,wy)..msg)}, " ")
@@ -619,7 +625,7 @@ local function utc(str,margin)
 	else
 		local h, m = math.modf(math.abs(timedec))
 		hmarg = h
-		mmarg = math.floor(m*60)
+		mmarg = math.floor(m*60 + 0.5)   -- без +0.5 «+4:35» давало 4:34: m*60 = 34.999…
 	end
 	if timedec == 0 then
 		dchar = "±"
@@ -776,43 +782,76 @@ end
 
 -- =p.unitime(mw.getCurrentFrame():newChild{title="smth",args={"−1:30","1"}})
 
+-- ── Разбор пользовательской записи часового пояса ────────────────────────────
+
+-- Признак того, что в строке зашито второе значение (зимнее/летнее) или
+-- диапазон: такую строку разбирать нельзя — потеряется половина смысла.
+local function has_second_value(tail)
+	if tail == '' then return false end
+	local t = mw.ustring.lower(tail)
+	return mw.ustring.find(t, '[+±−%-]%s*%d') ~= nil
+		or mw.ustring.find(t, 'лет[а-яё]') ~= nil
+		or mw.ustring.find(t, 'зим[а-яё]') ~= nil
+		or mw.ustring.find(t, 'dst') ~= nil
+		or mw.ustring.find(t, 'summer') ~= nil
+		or mw.ustring.find(t, 'winter') ~= nil
+end
+
+-- Минуты из записи «часы<разделитель>дробь».
+-- «:30» — канон; «.30» и «,30» — те же 30 минут; «.5» и «,5» — половина часа.
+-- Второе возвращаемое значение — признак того, что применена эвристика.
+local function minutes_from(sep, frac)
+	if frac == '' then return 0, false end
+	local n = tonumber(frac)
+	if sep == ':' then return n, false end
+	if mw.ustring.len(frac) == 2 and n <= 59 then return n, true end
+	return math.floor(tonumber('0.' .. frac) * 60 + 0.5), true
+end
+
+-- Приводит вход к каноническому «±H:MM» для utc(), отдельно возвращая
+-- неразобранный хвост строки и признак применённой эвристики.
+-- Первое значение nil — разбор не удался.
+local function split_tz(input)
+	local abbr = known_tzs[mw.ustring.upper(input)]
+	if abbr then return abbr, '', false end
+	local letters, sign, hh, sep, mm, tail = mw.ustring.match(
+		input, '^(%a*)%s*([+±−%-]?)%s*(%d+)([:%.,]?)(%d*)(.-)%s*$')
+	if not hh then return nil end
+	if letters ~= '' and mw.ustring.upper(letters) ~= 'UTC' then return nil end
+	if sep ~= '' and mm == '' then return nil end          -- «+3:» — обрубок
+	if has_second_value(tail) then return nil end
+	local minutes, guessed = minutes_from(sep, mm)
+	if minutes > 59 then return nil end
+	if sign == '' or sign == '±' then sign = '+' end
+	return sign .. hh .. ':' .. string.format('%02d', minutes), tail,
+		guessed or tail ~= ''
+end
+
 function p.unitime( frame )
     local args = getArgs(frame, { frameOnly = true })
     local DST = 0
-    if not args[2] then 
-    else DST = 1 end
+    if args[2] then DST = 1 end
     local input = trim(args[1] or "")
     if input == "" then return "" end
     -- уже оформленное (вики-ссылка или шаблон) возвращается как есть
     if string.sub(input,1,1) == '[' or string.sub(input,1,1) == '{' then
         return input
     end
-    -- разбор по классам символов: [буквы] [знак] [часы[:минуты]]
-    local letters, sign, digits = mw.ustring.match(input, '^(%a*)%s*([+±−%-]?)%s*(%d*[:.]?%d*)$')
-    local utcin
-    if letters then
-        local base = known_tzs[mw.ustring.upper(letters)]
-        if letters == '' and (sign ~= '' or digits ~= '') then
-            utcin = sign .. digits          -- чистое смещение: +3, −5:30, 3
-        elseif base and sign == '' and digits == '' then
-            utcin = base                    -- аббревиатура: МСК, CET, UTC
-        elseif mw.ustring.upper(letters) == 'UTC' and digits ~= '' then
-            utcin = sign .. digits          -- UTC+3, utc-5:30, UTC −3:30
-        end
-    end
+    local utcin, tail, heuristic = split_tz(input)
     if not utcin then
         -- не распознано: вернуть как есть, пометить категорией
         return input .. category.erroneous_parameters
     end
     local ok, output
     if DST == 0 then
-    	ok, output = pcall(utc, utcin)
+    	ok, output = pcall(function() return utc(utcin) .. tail end)
     else
     	ok, output = pcall(function()
-    		return utc(utcin) .. ", [[летнее время|летом]] " .. utc(utcin,DST)
+    		return utc(utcin) .. tail .. ", [[летнее время|летом]] " .. utc(utcin,DST)
     	end)
     end
     if not ok then return input .. category.erroneous_parameters end
+    if heuristic then return output .. category.incomplete_parameters end
     return output
 end
 

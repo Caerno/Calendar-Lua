@@ -39,8 +39,15 @@
 
 {{#invoke:Песочница/Carn/Calendar|Today}}
 
+== Тесты ==
+Набор юнит-тестов — [[Модуль:Calendar/testcases]]; первым параметром задаётся проверяемый модуль:
+* основной — <code><nowiki>{{#invoke:Calendar/testcases|run}}</nowiki></code>
+* песочница — <code><nowiki>{{#invoke:Calendar/testcases|run|Песочница/Carn/Calendar}}</nowiki></code>
+
+На 10 августа 2026 песочница проходит все 203 проверки набора, основной модуль — 134 из 203. Расхождения — в разборе часовых поясов и в положении скобки в двойной дате.
+
 == Сравнение с основным модулем ==
-Функции основного модуля в песочнице не изменены; результаты должны совпадать.
+Песочница отличается от основного модуля разбором часовых поясов в '''unitime''' (десятичная запись часов, текстовый хвост после смещения, отказ от разбора двух значений в одном параметре) и положением скобки в двойной дате; в остальном результаты должны совпадать.
 {| class="wikitable"
 ! Вызов !! [[Модуль:Calendar]] !! Песочница
 |-
@@ -51,6 +58,8 @@
 | <code><nowiki>NewDate|20.02.1917|ю|wd=1|wy=1</nowiki></code> || {{#invoke:Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|20.02.1917|ю|wd=1|wy=1}}
 |-
 | <code><nowiki>NewDate|2020-02-20|г|bc=1</nowiki></code> || {{#invoke:Calendar|NewDate|2020-02-20|г|bc=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|2020-02-20|г|bc=1}}
+|-
+| <code><nowiki>NewDate|1602-02-11|ю|wd=1|wm=1|wy=1</nowiki></code> || {{#invoke:Calendar|NewDate|1602-02-11|ю|wd=1|wm=1|wy=1}} || {{#invoke:Песочница/Carn/Calendar|NewDate|1602-02-11|ю|wd=1|wm=1|wy=1}}
 |-
 | <code><nowiki>ToIso|12 декабря 2020</nowiki></code> || {{#invoke:Calendar|ToIso|12 декабря 2020}} || {{#invoke:Песочница/Carn/Calendar|ToIso|12 декабря 2020}}
 |-

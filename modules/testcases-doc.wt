@@ -1,1 +1,3 @@
 {{#invoke:Calendar/testcases|run}}
+
+Проверка песочницы тем же набором: <code><nowiki>{{#invoke:Calendar/testcases|run|Песочница/Carn/Calendar}}</nowiki></code> — первым параметром задаётся проверяемый модуль.

@@ -1,10 +1,173 @@
 -- Юнит-тесты [[Module:Calendar]]
 
-local Calendar = require('Module:Calendar')
 local p = require('Module:UnitTests')
 
+-- Какой модуль проверяем. По умолчанию основной; песочница задаётся параметром:
+--   {{#invoke:Calendar/testcases|run|Песочница/Carn/Calendar}}
+local MODULE = 'Calendar'
+local target
+
+-- Тестируемый модуль (грузится лениво: MODULE известен только в момент запуска)
+local function C()
+	target = target or require('Module:' .. MODULE)
+	return target
+end
+
+-- Префикс вызова тестируемого модуля: inv('CalDate') → '{{#invoke:…|CalDate|'
+local function inv(fname)
+	return '{{#invoke:' .. MODULE .. '|' .. fname .. '|'
+end
+
+local CAT_ERR  = 'Википедия:Статьи с ошибочной работой Модуль:Calendar'
+local CAT_WARN = 'Википедия:Статьи с неполными или некорректными параметрами Модуль:Calendar'
+
+-- Прямой вызов: через препроцессор категории прицепились бы к странице тестов
+local function unitime(input, dst)
+	return C().unitime(
+		mw.getCurrentFrame():newChild{title = 'т', args = {input, dst}})
+end
+
+-- Делит результат на видимую часть и метку трекинг-категории
+local function split(out)
+	local cat = '—'
+	if out:find(CAT_ERR, 1, true) then cat = 'ERR'
+	elseif out:find(CAT_WARN, 1, true) then cat = 'WARN' end
+	return (out:gsub('%[%[Категория:[^%]]*%]%]', '')), cat
+end
+
+-- Каждый случай: {вход, ожидаемый вывод, ожидаемая категория[, значение DST]}
+local function check(self, cases)
+	for _, c in ipairs(cases) do
+		local body, cat = split(unitime(c[1], c[4]))
+		local label = 'unitime(' .. mw.text.nowiki(c[1])
+			.. (c[4] and (', ' .. c[4]) or '') .. ')'
+		self:equals(label, body, c[2])
+		self:equals(label .. ' — категория', cat, c[3])
+	end
+end
+
+-- Разделитель часов и минут: «:» — канон, «.» и «,» — эвристика
+function p:test_unitime_separator()
+	check(self, {
+		{'+9:30', '[[UTC+9:30]]', '—'},
+		{'+12:45', '[[UTC+12:45]]', '—'},
+		{'+9.30', '[[UTC+9:30]]', 'WARN'},
+		{'+3,30', '[[UTC+3:30]]', 'WARN'},
+		{'-3.30', '[[UTC&minus;3:30]]', 'WARN'},
+		{'+5.30', '[[UTC+5:30]]', 'WARN'},
+		{'+6.30', '[[UTC+6:30]]', 'WARN'},
+		{'+11.30', '[[UTC+11:30]]', 'WARN'},
+		-- одна цифра после разделителя — доля часа, а не минуты: .5 → :30, не :05
+		{'+3.5', '[[UTC+3:30]]', 'WARN'},
+		{'-4.5', '[[UTC&minus;4:30]]', 'WARN'},
+		{'-4,5', '[[UTC&minus;4:30]]', 'WARN'},
+		{'+5.75', '[[UTC+5:45]]', 'WARN'},
+		{'+9.60', '[[UTC+9:36]]', 'WARN'},
+	})
+end
+
+-- Смещение + текстовый хвост: смещение нормализуется, хвост сохраняется
+function p:test_unitime_tail()
+	check(self, {
+		{'UTC-6 (CST)', '[[UTC&minus;6:00]] (CST)', 'WARN'},
+		{'UTC − 6 (Центральный (CST))', '[[UTC&minus;6:00]] (Центральный (CST))', 'WARN'},
+		{'UTC-6 ( Центральный (CST) )', '[[UTC&minus;6:00]] ( Центральный (CST) )', 'WARN'},
+		{'UTC -5 (EST)', '[[UTC&minus;5:00]] (EST)', 'WARN'},
+		{'UTC+1 (CET)', '[[UTC+1:00]] (CET)', 'WARN'},
+		{'UTC+3 ( ЕАТ )', '[[UTC+3:00]] ( ЕАТ )', 'WARN'},
+		{'+1 (WAT)', '[[UTC+1:00]] (WAT)', 'WARN'},
+		{'+1 (центральноевропейское)', '[[UTC+1:00]] (центральноевропейское)', 'WARN'},
+		{'-3 GMT', '[[UTC&minus;3:00]] GMT', 'WARN'},
+		{'-3 SUL', '[[UTC&minus;3:00]] SUL', 'WARN'},
+		{'+5GMT', '[[UTC+5:00]]GMT', 'WARN'},
+		{'+5 UTC', '[[UTC+5:00]] UTC', 'WARN'},
+		{'+3 Московская время', '[[UTC+3:00]] Московская время', 'WARN'},
+		{'+3 часа по Московскому времени', '[[UTC+3:00]] часа по Московскому времени', 'WARN'},
+		{'+1 часов', '[[UTC+1:00]] часов', 'WARN'},
+		{'+1;', '[[UTC+1:00]];', 'WARN'},
+	})
+end
+
+-- Два значения в одном параметре — разбирать нельзя, возврат как есть
+function p:test_unitime_two_values()
+	check(self, {
+		{'-7/-6', '-7/-6', 'ERR'},
+		{'-3/-2', '-3/-2', 'ERR'},
+		{'UTC+0 / +1', 'UTC+0 / +1', 'ERR'},
+		{'+7/+8 (летом)', '+7/+8 (летом)', 'ERR'},
+		{'+2 (летом +3)', '+2 (летом +3)', 'ERR'},
+		{'UTC+2, летом UTC+3', 'UTC+2, летом UTC+3', 'ERR'},
+		{'UTC+1:00 летом, UTC+2:00 зимой', 'UTC+1:00 летом, UTC+2:00 зимой', 'ERR'},
+		{'UTC+1:00, летом UTC+2:00', 'UTC+1:00, летом UTC+2:00', 'ERR'},
+		{'UTC -7, летом UTC -6', 'UTC -7, летом UTC -6', 'ERR'},
+		{'UTC-4 Летнее время: UTC-5', 'UTC-4 Летнее время: UTC-5', 'ERR'},
+		{'UTC+1 (зимой)', 'UTC+1 (зимой)', 'ERR'},
+	})
+end
+
+-- Аббревиатуры и границы разбора
+function p:test_unitime_edges()
+	check(self, {
+		{'MSK', '[[UTC+3:00]]', '—'},
+		{'МСК', '[[UTC+3:00]]', '—'},
+		{'мск', '[[UTC+3:00]]', '—'},
+		{'EST', '[[UTC&minus;5:00]]', '—'},
+		{'NPT', '[[UTC+5:45]]', '—'},
+		{'UTC', '[[UTC±0:00]]', '—'},
+		{'UTC +3', '[[UTC+3:00]]', '—'},
+		{' +2 ', '[[UTC+2:00]]', '—'},
+		{'3', '[[UTC+3:00]]', '—'},
+		{'+0', '[[UTC±0:00]]', '—'},
+		{'±0', '[[UTC±0:00]]', '—'},
+		{'+14', '[[UTC+14:00]]', '—'},
+		{'+15', '+15', 'ERR'},
+		{'+3:', '+3:', 'ERR'},
+		{'+3:99', '+3:99', 'ERR'},
+		{'МСК+4', 'МСК+4', 'ERR'},
+		{'abcd', 'abcd', 'ERR'},
+	})
+end
+
+-- Минуты не должны терять единицу при обратном пересчёте
+function p:test_unitime_minutes()
+	check(self, {
+		{'+4:35', '[[UTC+4:35]]', '—'},
+		{'+2:55', '[[UTC+2:55]]', '—'},
+		{'+9:36', '[[UTC+9:36]]', '—'},
+		{'+5:45', '[[UTC+5:45]]', '—'},
+		{'+3:20', '[[UTC+3:20]]', '—'},
+		{'+0:59', '[[UTC+0:59]]', '—'},
+	})
+end
+
+-- Летнее время: пока это флаг «+1 час», значение параметра не читается
+function p:test_unitime_dst()
+	check(self, {
+		{'+12:45', '[[UTC+12:45]], [[летнее время|летом]] [[UTC+13:45]]', '—', '1'},
+		{'-3:30', '[[UTC&minus;3:30]], [[летнее время|летом]] [[UTC&minus;2:30]]', '—', 'да'},
+		{'+9.30', '[[UTC+9:30]], [[летнее время|летом]] [[UTC+10:30]]', 'WARN', 'есть'},
+		{'UTC-5 (EST)', '[[UTC&minus;5:00]] (EST), [[летнее время|летом]] [[UTC&minus;4:00]]', 'WARN', 'есть'},
+	})
+end
+
+-- В known_tzs несколько ключей заданы по два и более раз, и Lua оставляет
+-- ПОСЛЕДНЕЕ значение. Тест фиксирует факт коллизии, чтобы её нельзя было
+-- изменить незаметно; какие значения должны победить — предмет обсуждения.
+function p:test_unitime_collisions()
+	check(self, {
+		{'CST', '[[UTC+8:00]]', '—'},   -- США −6:00 перекрыто китайским +8:00
+		{'PST', '[[UTC+8:00]]', '—'},   -- США −8:00 перекрыто филиппинским +8:00
+		{'AST', '[[UTC&minus;4:00]]', '—'},   -- из четырёх записей осталась атлантическая
+		{'IST', '[[UTC+2:00]]', '—'},   -- индийское +5:30 и ирландское +1:00 перекрыты израильским
+		{'MST', '[[UTC+6:30]]', '—'},   -- США −7:00 перекрыто мьянманским +6:30
+		{'SST', '[[UTC+8:00]]', '—'},   -- самоанское −11:00 перекрыто сингапурским +8:00
+		{'BST', '[[UTC+1:00]]', '—'},   -- бангладешское +6:00 перекрыто британским
+		{'ECT', '[[UTC&minus;5:00]]', '—'},   -- эквадорское перекрыло карибское −4:00
+	})
+end
+
 function p:test_CalDate()
-	self:preprocess_equals_many('{{#invoke:Calendar|CalDate|', '}}', {
+	self:preprocess_equals_many(inv('CalDate'), '}}', {
 		{'2026-07-27|григорианский', '27 июля 2026'},
 		{'2026-07-27|юлианский', '14.07.2026'},
 		{'2026-07-27|исламский', '11 Сафар 1448'},
@@ -32,7 +195,7 @@ function p:test_CalDate()
 end
 
 function p:test_NthDay()
-	self:preprocess_equals_many('{{#invoke:Calendar|NthDay|', '}}', {
+	self:preprocess_equals_many(inv('NthDay'), '}}', {
 		{'1|0|10|2020|%Y-%m-%d', '2020-10-04'},
 		{'2|3|5|2019|%Y-%m-%d', '2019-05-08'},
 		{'-1|5|2|2024|%Y-%m-%d', '2024-02-23'},
@@ -43,7 +206,7 @@ function p:test_NthDay()
 end
 
 function p:test_ToIso()
-	self:preprocess_equals_many('{{#invoke:Calendar|ToIso|', '}}', {
+	self:preprocess_equals_many(inv('ToIso'), '}}', {
 		{'1.2.1602', '1602-02-01'},
 		{'2021.12.12', '2021-12-12'},
 		{'12 декабря 2020', '2020-12-12'},
@@ -55,7 +218,7 @@ function p:test_ToIso()
 end
 
 function p:test_BoxDate()
-	self:preprocess_equals_many('{{#invoke:Calendar|BoxDate|', '}}', {
+	self:preprocess_equals_many(inv('BoxDate'), '}}', {
 		{'06.1280|F Y года', 'июнь 1280 года'},
 		{'1820-07', 'июль 1820'},
 		{'08.08.1828', '8 августа 1828'},
@@ -65,16 +228,27 @@ function p:test_BoxDate()
 	})
 end
 
-function p:test_unitime()
-	self:preprocess_equals_many('{{#invoke:Calendar|unitime|', '}}', {
-		{'MSK', '[[UTC+3:00]]'},
-		{'МСК', '[[UTC+3:00]]'},
-		{'мск', '[[UTC+3:00]]'},
-		{'UTC +3', '[[UTC+3:00]]'},
-		{' +2 ', '[[UTC+2:00]]'},
-		{'EST', '[[UTC&minus;5:00]]'},
-		{'+12:45|1', '[[UTC+12:45]], [[летнее время|летом]] [[UTC+13:45]]'},
-		{'-3:30|да', '[[UTC&minus;3:30]], [[летнее время|летом]] [[UTC&minus;2:30]]'},
+-- Двойная дата: юлианское число уходит в подсказку, григорианское — в скобки
+local JUL = '<span style="border-bottom: 1px dotted; cursor: help" title="по юлианскому календарю">'
+
+-- Скобки при общем месяце: ссылка сквозная, значит внутрь подписи должны попасть
+-- обе скобки, а не одна закрывающая (баг с СО модуля от 21.11.2023)
+function p:test_OldDate_brackets()
+	self:preprocess_equals_many(inv('OldDate'), '}}', {
+		{'11.2.1602|j|wd=1|wm=1|wy=1',
+			JUL .. '11</span> [[21 февраля|(21) февраля]] [[1602 год|1602 года]]'},
+		{'11.2.1602|j|wd=1|wm=1|wy=1|sq_brts=1',
+			JUL .. '11</span> [[21 февраля|&#091;21&#093; февраля]] [[1602 год|1602 года]]'},
+		-- без wm ссылка только на день, обе скобки снаружи — так было и раньше
+		{'11.2.1602|j|wd=1|wy=1',
+			JUL .. '11</span> ([[21 февраля|21]]) февраля [[1602 год|1602 года]]'},
+	})
+	-- yearmark=1 подставляет {{DateStyle}}; голый вызов без него даёт год без «года»
+	self:preprocess_equals_many(inv('NewDate'), '}}', {
+		{'1602-02-11|ю|wd=1|wm=1|wy=1|yearmark=1',
+			JUL .. '11</span> [[21 февраля|(21) февраля]] [[1602 год|1602 года]]'},
+		{'1602-02-11|ю|wd=1|wm=1|wy=1',
+			JUL .. '11</span> [[21 февраля|(21) февраля]] [[1602 год|1602]]'},
 	})
 end
 
@@ -82,28 +256,39 @@ end
 -- не цеплялись к странице тестов
 function p:test_degradation()
 	local frame = mw.getCurrentFrame()
-	local out = Calendar.unitime(frame:newChild{title = 't', args = {'МСК+4'}})
+	local out = C().unitime(frame:newChild{title = 't', args = {'МСК+4'}})
 	self:equals('unitime("МСК+4"): возврат как есть + категория',
 		out:find('^МСК%+4%[%[Категория:Википедия:Статьи с ошибочной работой') ~= nil, true)
-	out = Calendar.BoxDate(frame:newChild{title = 't', args = {'13 января'}})
+	out = C().BoxDate(frame:newChild{title = 't', args = {'13 января'}})
 	self:equals('BoxDate("13 января"): span-ошибка + категория',
 		out:find('^<span class=error>') ~= nil and out:find('%[%[Категория:') ~= nil, true)
-	out = Calendar.NthDay(frame:newChild{title = 't', args = {'9', '0', '10', '2020'}})
+	out = C().NthDay(frame:newChild{title = 't', args = {'9', '0', '10', '2020'}})
 	self:equals('NthDay(9): span-ошибка + категория',
 		out:find('^<span class=error>') ~= nil and out:find('%[%[Категория:') ~= nil, true)
 end
 
 function p:test_bxDate()
-	self:equals('bxDate("06.1280", "F Y года")', (Calendar.bxDate('06.1280', 'F Y года')), 'июнь 1280 года')
-	self:equals('bxDate(nil): текст ошибки', select(3, Calendar.bxDate(nil)).errorText, 'нет входящих данных')
-	self:equals('bxDate("13 января"): текст ошибки', select(3, Calendar.bxDate('13 января')).errorText,
+	self:equals('bxDate("06.1280", "F Y года")', (C().bxDate('06.1280', 'F Y года')), 'июнь 1280 года')
+	self:equals('bxDate(nil): текст ошибки', select(3, C().bxDate(nil)).errorText, 'нет входящих данных')
+	self:equals('bxDate("13 января"): текст ошибки', select(3, C().bxDate('13 января')).errorText,
 		'строка «13 января» не является верной датой, пожалуйста, укажите дату в формате ГГГГ-ММ-ДД')
 end
 
--- {{#invoke:Calendar/testcases|run}} и |run_tests
-local unittester_run = p.run
-function p.run(a, b)
-	return unittester_run(p, b or a)
+-- {{#invoke:Calendar/testcases|run}} и |run_tests;
+-- первым параметром можно передать проверяемый модуль (по умолчанию Calendar)
+local function with_module(orig)
+	return function(a, b)
+		local frame = b or a
+		local name = frame and frame.args and frame.args[1]
+		if name and name ~= '' then
+			MODULE = mw.text.trim(name)
+			target = nil
+		end
+		return orig(p, frame)
+	end
 end
+
+p.run = with_module(p.run)
+if p.run_tests then p.run_tests = with_module(p.run_tests) end
 
 return p
